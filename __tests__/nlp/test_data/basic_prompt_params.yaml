@@ -1,0 +1,5 @@
+model: gpt-3.5-turbo
+temperature: 1.3
+system: |
+  you are a writer that sepcializes in writing about $topic.
+  it should be between $min_length and $max_length words.

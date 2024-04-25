@@ -1,0 +1,11 @@
+research
+**/*.pyc
+data
+.env
+legacy
+.ipynb_checkpoints
+.DS_Store
+.vscode
+*.env
+out
+__pycache__/
