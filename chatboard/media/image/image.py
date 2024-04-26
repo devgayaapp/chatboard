@@ -7,9 +7,12 @@ import io
 from pydantic import BaseModel
 
 import requests
-from config import DEBUG, TEMP_DIR
+# from config import DEBUG, TEMP_DIR
 from util.boto import get_s3_obj, upload_s3_obj
 import pathlib
+import os
+
+DEBUG = os.environ.get('DEBUG', False)
 
 
 

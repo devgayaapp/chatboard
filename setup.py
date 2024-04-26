@@ -1,26 +1,54 @@
-from setuptools import find_namespace_packages, find_packages, setup
+from setuptools import setup, find_namespace_packages
 
 setup(
-    name='chatboard',
-    version='1.0',
-    description='Installs all components of chatboard',
+    name="chatboard",
+    version="0.1",
     author='Pavel Schudel',
     author_email='pavel1860@gmail.com',
     url='https://github.com/pavel1860/chatboard',
-    packages=[
-        "chatboard.chatboard_text", 
-        # "chatboard.chatboard_scrape", 
-        # "chatboard.chatboard_media"
-    ]
-    # packages=find_namespace_packages(include=['chatboard.*']),
-    # packages=find_packages(), 
-    # install_requires=[
-    #     'chatboard-common==0.1',
-    #     'chatboard-text==0.1',
-    #     'chatboard-media==0.1',
-    #     # Make sure versions are managed to prevent conflicts
-    # ],
-    # extras_require={
-    #     'full': ['some-optional-dependency']
-    # }
+    description="A modular chatboard package",
+    # packages=find_namespace_packages(include=['chatboard*', 'chatboard.*', 'text']),
+    packages=find_namespace_packages(include=['chatboard*', 'chatboard.*', 'text', 'media', 'scrape']),
+    install_requires=[
+        # list common dependencies here
+    ],
+    extras_require={
+        'text': [
+            "langchain==0.1.9",
+            "langchain-openai==0.0.5",
+            "pydantic==1.10.4",
+            "tiktoken==0.5.2",
+            "pinecone-client==3.0.1",
+            "pinecone-text==0.7.0",
+            "scipy==1.11.4",
+            "boto3==1.24.47",
+            "openai==1.23.2",
+            "langdetect==1.0.9",
+            "GitPython==3.1.31",
+        ],
+        'media': [
+            "starlette==0.24.0",
+            # "torch==2.2.0",
+            "xformers==0.0.24",
+            "transformers==4.38.1",
+            "diffusers==0.26.3",
+            "numpy==1.26.4",
+            "boto3==1.24.47",
+            "gunicorn==20.1.0",
+            "python-dotenv==0.20.0",
+            "opencv-python==4.7.0.68",
+            "pydantic==1.10.4",
+            "mediapipe==0.9.1.0",
+            "soundfile==0.12.1",
+        ],
+        'scrape': []
+    },
+    classifiers=[
+        # Classifiers help users find your project by categorizing it.
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    python_requires='>=3.6',
 )
+

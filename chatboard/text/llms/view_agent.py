@@ -8,17 +8,17 @@ import pydantic as pyd
 from langsmith import RunTree
 import numpy as np
 from pydantic import BaseModel, PrivateAttr, validator
-from components.etl.chat_prompt import ChatPrompt, ChatResponse, ChatChunk, validate_input_variables
-from components.etl.completion_parsing import num_split_field, split_field
+from .chat_prompt import ChatPrompt, ChatResponse, ChatChunk, validate_input_variables
+from .completion_parsing import num_split_field, split_field
 # from components.etl.system_conversation import AIMessage, Conversation, ConversationRag
-from components.etl.conversation import HumanMessage, SystemConversation, AIMessage, Conversation, ConversationRag, from_langchain_message
-from components.etl.rag_manager import RagVectorSpace
+from .conversation import HumanMessage, SystemConversation, AIMessage, Conversation, ConversationRag, from_langchain_message
+from .rag_manager import RagVectorSpace
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
-from components.etl.tracer import Tracer
+from .tracer import Tracer
 
 
 
