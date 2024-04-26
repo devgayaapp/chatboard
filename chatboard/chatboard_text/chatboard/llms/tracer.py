@@ -7,7 +7,7 @@
 import traceback
 from typing import Dict, Optional
 from langsmith import RunTree
-
+import os
 
 # class RunTree(ls_schemas.RunBase):
 # outputs: Optional[Dict] = None,
@@ -19,6 +19,9 @@ class Tracer:
     def __init__(self, name, inputs, run_type="chain", extra={}, tracer_run=None, is_traceable=True):
         self.is_traceable = is_traceable
         if not self.is_traceable:
+            return
+        if os.environ.get("LANGCHAIN_API_KEY") is None:
+            self.is_traceable = False
             return
         if type(tracer_run) == Tracer:
             tracer_run = tracer_run.tracer_run

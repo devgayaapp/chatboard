@@ -4,14 +4,16 @@ from typing import Generic, Any, Optional, TypeVar, Union
 from pydantic import BaseModel
 from pydantic.generics import GenericModel
 import numpy as np
-from ...common.vectors.embeddings.text_embeddings import DenseEmbeddings, Embeddings
+# from ...common.vectors.embeddings.text_embeddings import DenseEmbeddings, Embeddings
+from ..vectors.embeddings.text_embeddings import DenseEmbeddings, Embeddings
 from uuid import uuid4
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import norm
 import numpy as np
 
 
-from ...common.vectors.pinecone_vector_store import PineconeVectorStore
+# from ...common.vectors.pinecone_vector_store import PineconeVectorStore
+from ..vectors.pinecone_vector_store import PineconeVectorStore
 
 
 def values_to_csr_matrix(sparse_values, shape):

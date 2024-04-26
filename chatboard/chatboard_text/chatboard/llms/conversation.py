@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, validator
 from .rag_manager import RagValue, RagVector, RagVectorSpace
 from langsmith import Client
 # from ...common.vectors.embeddings.text_embeddings import DenseEmbeddings
-from ...common.vectors.embeddings.text_embeddings import DenseEmbeddings
+from ..vectors.embeddings.text_embeddings import DenseEmbeddings
 
 
 class BaseMessage(BaseModel):
