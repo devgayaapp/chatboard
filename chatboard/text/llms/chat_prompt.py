@@ -15,7 +15,7 @@ from langchain.chat_models import ChatOpenAI
 from langsmith.run_trees import RunTree
 
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.generics import GenericModel
 from langchain_core.utils.function_calling import convert_to_openai_tool
 import tiktoken
@@ -48,19 +48,19 @@ def get_tool_scheduler_prompt(tool_dict):
     return prompt
 
 
-def encode_logits(string: str, bias_value: int, encoding_model: str) -> int:
-    """Returns the number of tokens in a text string."""
+# def encode_logits(string: str, bias_value: int, encoding_model: str) -> int:
+#     """Returns the number of tokens in a text string."""
     
-    return {en: bias_value for en in encoding_model.encode(string)}
+#     return {en: bias_value for en in encoding_model.encode(string)}
 
 
 
-def encode_logits_dict(logits, encoding_model):
-    encoded_logits = {}
-    for key, value in logits.items():
-        item_logits = encode_logits(key, value, encoding_model)
-        encoded_logits.update(item_logits)
-    return encoded_logits
+# def encode_logits_dict(logits, encoding_model):
+#     encoded_logits = {}
+#     for key, value in logits.items():
+#         item_logits = encode_logits(key, value, encoding_model)
+#         encoded_logits.update(item_logits)
+#     return encoded_logits
 
 
 class PromptErrorTypes(Enum):
@@ -127,12 +127,17 @@ class PromptChunkTypes(Enum):
 
 
 class ChatChunk(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
     msg_type: PromptChunkTypes
     func: Optional[str] = None
     content: Optional[Union[str, BaseModel]]
     output: Optional[Union[BaseModel]]
     prompt_response: Optional[ChatResponse] = None
     field: Optional[str]
+
+
+    
 
     def to_dict(self):
         return {

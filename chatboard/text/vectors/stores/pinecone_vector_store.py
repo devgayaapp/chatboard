@@ -8,7 +8,7 @@ import asyncio
 from pydantic import BaseModel
 # from pydantic.networks import Type
 # from ...common.vectors.embeddings.text_embeddings import Embeddings
-from ..vectors.embeddings.text_embeddings import Embeddings
+from ...vectors.embeddings.text_embeddings import Embeddings
 # from config import PINECONE_KEY, PINECONE_ENV
 # from langchain.schema.embeddings import Embeddings
 import langchain.schema.embeddings as lang_embeddings

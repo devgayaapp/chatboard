@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 import pydantic as pyd
 from langsmith import RunTree
 import numpy as np
-from pydantic import BaseModel, PrivateAttr, validator
+from pydantic import BaseModel, ConfigDict, PrivateAttr, validator
 from .chat_prompt import ChatPrompt, ChatResponse, ChatChunk, validate_input_variables
 from .completion_parsing import num_split_field, split_field
 # from components.etl.system_conversation import AIMessage, Conversation, ConversationRag
@@ -31,11 +31,19 @@ class AgentChunkTypes(Enum):
 
 
 class AgentChunk(BaseModel):
+    # model_config = ConfigDict(arbitrary_types_allowed=True)
+
     msg_type: AgentChunkTypes
     func: Optional[str]
     iteration: Optional[int]
     prompt_chunk: Optional[ChatChunk]
     agent_response: Optional[ChatResponse]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+    
 
 
     def to_dict(self):

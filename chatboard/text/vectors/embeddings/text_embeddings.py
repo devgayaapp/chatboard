@@ -3,6 +3,7 @@ from typing import Any, List
 from langchain.pydantic_v1 import BaseModel
 # from langchain.schema.embeddings import Embeddings
 import langchain.schema.embeddings as lang_embeddings
+from openai import AsyncOpenAI
 from pinecone_text.sparse import BM25Encoder
 from pinecone_text.dense import OpenAIEncoder
 
@@ -89,20 +90,35 @@ class HybridAdaMB25Embeddings(BaseModel, lang_embeddings.Embeddings):
 
 
 
-class DenseEmbeddings(BaseModel, lang_embeddings.Embeddings):
+# class DenseEmbeddings(BaseModel, lang_embeddings.Embeddings):
 
-    sparse_embeddings: Any
-    dense_embeddings: Any
+#     sparse_embeddings: Any
+#     dense_embeddings: Any
+
+#     def __init__(self):
+#         super().__init__()
+#         self.dense_embeddings = OpenAIEncoder()
+
+#     def embed_documents(self, texts: List[str]) -> List[List[float]]:
+#         dense_embeddings = self.dense_embeddings.encode_documents(texts)
+#         return [Embeddings(dense=dense_emb, sparse=None) for dense_emb in dense_embeddings]
+
+#     def embed_query(self, text: str) -> List[float]:
+#         """Embed query text."""
+#         dense_embeddings = self.dense_embeddings.encode_queries(text)
+#         return Embeddings(dense=dense_embeddings, sparse=None)
+
+
+class DenseEmbeddings:
 
     def __init__(self):
         super().__init__()
-        self.dense_embeddings = OpenAIEncoder()
+        self.client = AsyncOpenAI()
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        dense_embeddings = self.dense_embeddings.encode_documents(texts)
-        return [Embeddings(dense=dense_emb, sparse=None) for dense_emb in dense_embeddings]
+    async def embed_documents(self, texts: List[str], model="text-embedding-3-small"):
+        res = await self.client.embeddings.create(input=texts, model=model)
+        return [embs.embedding for embs in res.data]
 
-    def embed_query(self, text: str) -> List[float]:
-        """Embed query text."""
-        dense_embeddings = self.dense_embeddings.encode_queries(text)
-        return Embeddings(dense=dense_embeddings, sparse=None)
+    async def embed_query(self, text: str, model="text-embedding-3-small"):
+        res = await self.client.embeddings.create(input=[text], model=model)
+        return res.data[0].embedding

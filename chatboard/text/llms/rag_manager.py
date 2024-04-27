@@ -13,7 +13,7 @@ import numpy as np
 
 
 # from ...common.vectors.pinecone_vector_store import PineconeVectorStore
-from ..vectors.pinecone_vector_store import PineconeVectorStore
+from ..vectors.stores.pinecone_vector_store import PineconeVectorStore
 
 
 def values_to_csr_matrix(sparse_values, shape):
@@ -101,9 +101,9 @@ class RagValue(BaseModel):
 ValueT = TypeVar('ValueT', bound=RagValue)
 
 class RagVector(GenericModel, Generic[ValueT]):
-    id: Optional[str] = None
+    id: Optional[Union[str, int]] = None
     score: Optional[float] = None
-    embedding: Optional[Embeddings]
+    embedding: Optional[Embeddings] = None
     metadata: ValueT
 
     def to_dict(self):
@@ -177,14 +177,17 @@ class RagVectorSpace:
     """
 
 
-    def __init__(self, namespace, vectorizer: VectorizerBase, value_model=None, index='rag') -> None:
+    def __init__(self, namespace, vectorizer: VectorizerBase, value_model=None, vector_store=None, index='rag') -> None:
         self.namespace = namespace
         self.vectorizer = vectorizer
-        self.vector_store = PineconeVectorStore(
-            index, 
-            namespace, 
-            metadata_model=value_model
-        )
+        if vector_store is None:
+            self.vector_store = PineconeVectorStore(
+                index, 
+                namespace, 
+                metadata_model=value_model
+            )
+        else:
+            self.vector_store = vector_store
         self.value_model = value_model
 
 

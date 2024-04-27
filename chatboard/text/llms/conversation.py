@@ -5,7 +5,7 @@
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field, validator
 from .rag_manager import RagValue, RagVector, RagVectorSpace
 from langsmith import Client
@@ -26,15 +26,18 @@ class BaseMessage(BaseModel):
 
 
 class SystemMessage(BaseMessage):
-    role: str = Field("system", const=True)
+    # role: str = Field("system", const=True)
+    role: Literal["system"] = "system"
 
 
 class HumanMessage(BaseMessage):
-    role: str = Field("user", const=True)
+    # role: str = Field("user", const=True)
+    role: Literal["user"] = "user"
 
 
 class AIMessage(BaseMessage):
-    role: str = Field("assistant", const=True)
+    # role: str = Field("assistant", const=True)
+    role: Literal["assistant"] = "assistant"
     tool_calls: Optional[List[BaseModel]] = None
     
     # tools: Optional[List[BaseModel]] = None

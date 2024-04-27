@@ -48,7 +48,9 @@ def encode_logits(string: str, bias_value: int, encoding_model: str) -> int:
     return {en: bias_value for en in encoding_model.encode(string)}
 
 
-def encode_logits_dict(logits, encoding_model):
+def encode_logits_dict(logits, encoding_model = None):
+    if encoding_model is None:
+        encoding_model = tiktoken.get_encoding("cl100k_base")
     encoded_logits = {}
     for key, value in logits.items():
         item_logits = encode_logits(key, value, encoding_model)

@@ -25,6 +25,7 @@ setup(
             "openai==1.23.2",
             "langdetect==1.0.9",
             "GitPython==3.1.31",
+            "qdrant-client==1.8.2",
         ],
         'media': [
             "starlette==0.24.0",
