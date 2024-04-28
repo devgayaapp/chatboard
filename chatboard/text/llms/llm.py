@@ -8,7 +8,8 @@ from langchain.chat_models import ChatOpenAI
 
 
 # from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage, AIMessage
-from .system_conversation import AIMessage, Conversation, HumanMessage, SystemMessage, from_langchain_message
+# from .system_conversation import AIMessage, Conversation, HumanMessage, SystemMessage, from_langchain_message
+from .conversation import AIMessage, Conversation, HumanMessage, SystemMessage, from_langchain_message
 from pydantic import BaseModel, Field
 from .tracer import Tracer
 import tiktoken
@@ -353,7 +354,7 @@ class LLM(BaseModel):
         
 
 
-class OpenAILLM(LLM):
+class OpenAiLLM(LLM):
     name: str = "OpenAiLLM"
     client: Union[OpenAiLlmClient, PhiLlmClient] = Field(default_factory=OpenAiLlmClient)
     model: str = "gpt-3.5-turbo-0125"

@@ -34,7 +34,8 @@ from chatboard.text.vectors.rag_documents import RagDocuments
 # from config import PROMPT_REPO_HOME
 from .completion_parsing import auto_split_completion, auto_split_list_completion, is_list_model, parse_completion, parse_model_list, unpack_list_model
 from .conversation import SystemConversation, AIMessage, Conversation, ConversationRag, HumanMessage, SystemMessage, from_langchain_message
-from .openai_llm import OpenAiLLM
+# from .openai_llm import OpenAiLLM
+from .llm import OpenAiLLM
 from .prompt_manager import PromptManager
 from .rag_manager import RagVectorSpace
 from .tracer import Tracer
@@ -168,6 +169,14 @@ def validate_input_variables(kwargs, input_variables):
     return True
 
 
+def filter_kwargs(kwargs, func_):
+    signature = inspect.signature(func_)
+    parameters = signature.parameters
+    argument_names = [param for param in parameters if parameters[param].default == inspect.Parameter.empty]
+    return {k: v for k, v in kwargs.items() if k in argument_names}
+
+
+
 class Prompt(BaseModel):
     # promptpath: str=None
     system_prompt: str=None    
@@ -175,6 +184,9 @@ class Prompt(BaseModel):
     # _func=None
     name: str
     llm: OpenAiLLM = Field(default_factory=OpenAiLLM)
+    output_class: Optional[BaseModel] = None
+    rag_space: Optional[RagDocuments] = None
+    rag_namespace: Optional[str] = None
     # filename: str=None
     # rag_length: int=None    
     # rag: RagDocuments= Field(default_factory=RagDocuments)
@@ -201,6 +213,13 @@ class Prompt(BaseModel):
     # seed: int = None                 
     class Config:
         arbitrary_types_allowed = True
+
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.rag_namespace:
+            self.rag_space = RagDocuments(self.rag_namespace)
+        
 
 
     # def __init__(
@@ -387,12 +406,14 @@ class Prompt(BaseModel):
         return "Say something"
     
     async def _get_prompt_msg(self, **kwargs):
+        postfix = kwargs.get('prompt_postfix', '')
         if kwargs.get('prompt'):
             prompt = kwargs['prompt']
-            return HumanMessage(content=prompt)
-        prompt = await self.render_prompt(**kwargs)
+            return HumanMessage(content=prompt + postfix)
+        prompt_kwargs = filter_kwargs(kwargs, self.render_prompt)
+        prompt = await self.render_prompt(**prompt_kwargs)
         prompt = textwrap.dedent(prompt).strip()
-        return HumanMessage(content=prompt) 
+        return HumanMessage(content=prompt + postfix) 
     
     async def _get_system_msg(self, **kwargs):
         if self.system_prompt is not None:
@@ -408,16 +429,23 @@ class Prompt(BaseModel):
         system_msg = await self._get_system_msg(**kwargs)
         prompt_msg = await self._get_prompt_msg(**kwargs)        
         return prompt_msg, system_msg
-            
+
+
+    # async def rag(self, **kwargs):            
 
     async def conversation(self, **kwargs: Any):
         prompt_msg, system_msg = await self.render_prompts(**kwargs)
-        return [
-            system_msg,
-            prompt_msg
-        ]
+        msgs = [system_msg]
+        if self.rag_namespace:
+            rag_results = await self.rag_space.similarity(prompt_msg.content)
+            for rag_res in rag_results:
+                msgs.append(HumanMessage(content=rag_res.metadata.key))
+                msgs.append(AIMessage(content=rag_res.metadata.value))
+        msgs.append(prompt_msg)
+        return msgs
+    
 
-    async def __call__(self, prompt=None, tracer_run=None, **kwargs: Any) -> Any:
+    async def __call__(self, prompt=None, tracer_run=None, output_conversation=False, **kwargs: Any) -> Any:
         if prompt is not None:
             kwargs['prompt'] = prompt
         log_kwargs = {}
@@ -447,9 +475,26 @@ class Prompt(BaseModel):
                     **kwargs
                 )
             # output = openai_completion.choices[0].message
-
+            completion_msg.output = await self.parser(completion_msg.content)
             prompt_run.end(outputs={'output': completion_msg})
+            if output_conversation:
+                return msgs + [completion_msg]
             return completion_msg
+    
+
+    async def parser(self, completion):
+        if self.output_class:
+            # try:
+            if is_list_model(self.output_class):
+                list_model = unpack_list_model(self.output_class)
+                if not self.delimiter:
+                    raise ValueError("delimiter must be provided for list models")
+                return parse_model_list(completion, list_model, self.delimiter)
+            else:
+                return parse_completion(completion, self.output_class)
+        else:
+            return completion
+            
 
     async def __call__2(self, prompt=None, conversation= None, tracer_run=None, **kwargs: Any) -> Any:
         
@@ -895,8 +940,7 @@ class Prompt(BaseModel):
         return examples
     
 
-    async def parser(self, completion, context):
-        return completion
+    
     
 
 

@@ -39,6 +39,7 @@ class AIMessage(BaseMessage):
     # role: str = Field("assistant", const=True)
     role: Literal["assistant"] = "assistant"
     tool_calls: Optional[List[BaseModel]] = None
+    output: Optional[BaseModel] = None
     
     # tools: Optional[List[BaseModel]] = None
 

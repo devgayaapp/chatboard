@@ -105,7 +105,7 @@ class RagDocuments(Generic[K, V]):
         query_vector = await self._embed_documents([query])
         query_vector = query_vector[0]
         res = await self.vector_store.similarity(query_vector, top_k, filters, alpha)
-        return self._pack_results(res)    
+        return self._pack_results(res)
 
 
     async def create_namespace(self, namespace: str=None):

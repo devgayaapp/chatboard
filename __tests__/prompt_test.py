@@ -4,7 +4,7 @@ import pytest
 from pydantic import Field
 
 from chatboard.text.llms.prompt import Prompt
-from chatboard.text.llms.llm import LLM, OpenAiLlmClient, PhiLLM, OpenAILLM
+from chatboard.text.llms.llm import LLM, OpenAiLlmClient, PhiLLM, OpenAiLLM
 
 
 
@@ -15,7 +15,7 @@ async def test_chat_prompt_class():
         name: str = "test_prompt"
         is_traceable: bool = False
         # llm: PhiLLM = Field(default_factory=PhiLLM)
-        llm: OpenAILLM = Field(default_factory=OpenAILLM)
+        llm: OpenAiLLM = Field(default_factory=OpenAiLLM)
         system_prompt: str = """
         you should say "yes" for every question
         """
@@ -52,7 +52,7 @@ async def test_chat_inline_prompt():
     class TestPrompt(Prompt):
         name: str = "test_prompt"
         is_traceable: bool = False
-        llm: OpenAILLM = Field(default_factory=OpenAILLM)
+        llm: OpenAiLLM = Field(default_factory=OpenAiLLM)
         system_prompt: str = """
         you should say "yes" for every question
         """    
