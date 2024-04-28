@@ -2,8 +2,11 @@ from typing import Any, Dict, List, TypeVar, Union, Optional, Generic, Type
 from uuid import uuid4
 from pydantic import BaseModel
 from chatboard.text.vectors.stores.base import VectorStoreBase
+from chatboard.text.vectors.stores.qdrant_vector_store import QdrantVectorStore
 from chatboard.text.vectors.vectorizers.base import VectorMetrics, VectorizerBase
 import asyncio
+
+from chatboard.text.vectors.vectorizers.text_vectorizer import TextVectorizer
 
 
 
@@ -14,8 +17,8 @@ V = TypeVar('V', bound=BaseModel)
 
 class RagDocMetadata(Generic[K, V], BaseModel):
     id: Union[str, int]
-    key: K
-    value: V
+    key: Union[K, str]
+    value: Union[V, str]
 
 
 
@@ -35,14 +38,20 @@ class RagDocuments(Generic[K, V]):
     def __init__(
             self, 
             namespace: str, 
-            vectorizers: List[VectorizerBase], 
-            vector_store: VectorStoreBase, 
-            key_class: Type[K], 
-            value_class: Type[V]
+            vectorizers: List[VectorizerBase] = [], 
+            vector_store: VectorStoreBase = None, 
+            key_class: Union[Type[K], str] = str, 
+            value_class: Union[Type[V], str] = str
         ) -> None:
         self.namespace = namespace
-        self.vector_store = vector_store
-        self.vectorizers = vectorizers
+        if vector_store is None:
+            self.vector_store = QdrantVectorStore(namespace)
+        else:
+            self.vector_store = vector_store
+        if not vectorizers:
+            self.vectorizers = [TextVectorizer()]
+        else:
+            self.vectorizers = vectorizers
         self.key_class = key_class
         self.value_class = value_class
 
@@ -62,12 +71,18 @@ class RagDocuments(Generic[K, V]):
     def _pack_results(self, results):
         rag_results = []
         for res in results:
-            key = self.key_class(**res.metadata["key"])
-            value = self.value_class(**res.metadata["value"])
+            if self.key_class == str:
+                key = res.metadata["key"]
+            else:
+                key = self.key_class(**res.metadata["key"])
+            if self.value_class == str:
+                value = res.metadata["value"]
+            else:
+                value = self.value_class(**res.metadata["value"])
             rag_results.append(RagSearchResult(
                 id=res.id, 
                 score=res.score, 
-                metadata=RagDocMetadata(
+                metadata=RagDocMetadata[self.key_class, self.value_class](
                     id=res.id, 
                     key=key, 
                     value=value
@@ -81,7 +96,7 @@ class RagDocuments(Generic[K, V]):
         vectors = await self._embed_documents(keys)
         if ids is None:
             ids = [str(uuid4()) for _ in range(len(keys))]
-        documents = [RagDocMetadata(id=i, key=key, value=value) for i, key, value in zip(ids, keys, values)]
+        documents = [RagDocMetadata[self.key_class, self.value_class](id=i, key=key, value=value) for i, key, value in zip(ids, keys, values)]
         outputs = await self.vector_store.add_documents(vectors, documents, namespace=self.namespace)
         return outputs
 
@@ -96,3 +111,7 @@ class RagDocuments(Generic[K, V]):
     async def create_namespace(self, namespace: str=None):
         namespace = namespace or self.namespace
         return await self.vector_store.create_collection(self.vectorizers, namespace)
+    
+    async def delete_namespace(self, namespace: str=None):
+        namespace = namespace or self.namespace
+        return await self.vector_store.delete_collection(namespace)

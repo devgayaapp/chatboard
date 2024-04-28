@@ -1,15 +1,12 @@
 import json
 import pytest
 import sys
-from components.audio.audio import Audio
 
 
 module_path = 'voice_server'
 sys.path.insert(0, module_path)
-from data.testing_data.lexical_test_data import lexical_data
-from components.text.transcript import Paragraph, Sentence, Transcript, Word
-from config import AWS_VOICE_BUCKET, TEMP_DIR, DATA_DIR, TESTING_DATA_DIR
-from util.sanitizers import get_sanitized_filename
+# from data.testing_data.lexical_test_data import lexical_data
+from chatboard.text.transcript import Paragraph, Sentence, Transcript, Word
 
 
 

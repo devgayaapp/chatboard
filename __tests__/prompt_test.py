@@ -1,13 +1,13 @@
 import re
 from openai import BaseModel
 import pytest
-from components.etl.chat_agent import ChatAgent
-from components.etl.chat_prompt import ChatPrompt
+from chatboard.text.llms.chat_agent import ChatAgent
+from chatboard.text.llms.chat_prompt import ChatPrompt
 from dataclasses import Field
 from langchain_core.pydantic_v1 import BaseModel, Field
-from components.etl.chat_prompt import ChatPrompt
+from chatboard.text.llms.chat_prompt import ChatPrompt
 # from components.etl.system_conversation import ConversationRag, LangsmithConversationDataset
-from components.etl.conversation import ConversationRag, LangsmithConversationDataset
+from chatboard.text.llms.conversation import ConversationRag, LangsmithConversationDataset
 
 
 

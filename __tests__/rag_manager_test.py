@@ -2,18 +2,18 @@ import sys
 from typing import List
 from uuid import uuid4
 
-from components.etl.conversation import AIMessage, ConversationRagMetadata, HumanMessage, RagConversationVectorizer
+from chatboard.text.llms.conversation import AIMessage, ConversationRagMetadata, HumanMessage, RagConversationVectorizer
 sys.path.append("logic")
 
 
 import json
 
 from pydantic import BaseModel
-from components.etl.rag_manager import RagVectorSpace, RagVector
+from chatboard.text.llms.rag_manager import RagVectorSpace, RagVector
 # from components.etl.rag_manager import RAGMetadata
 import pytest
 
-from logic.resources.state_embeddings import RagStateViewVectorizer, StateViewMetadata
+# from logic.resources.state_embeddings import RagStateViewVectorizer, StateViewMetadata
 
 
 # class NerRagMetadata(BaseModel):
@@ -95,64 +95,64 @@ async def test_basic_operations():
 
 
 
-from logic.prompts.media_editor_agent5.positioning import Placement
-from logic.prompts.media_editor_agent5.tools import DeleteElement
-from logic.prompts.media_editor_agent5.state import StockClipState, CutOutState, TextOverlayState, BackgroundPlateState
-from logic.prompts.media_editor_agent5.elements import BackgroundPlate, TextOverlay, CutOut, StockClip
-from logic.resources.state_embeddings import RagStateViewVectorizer, StateViewMetadata
-from components.etl.rag_manager import RagVectorSpace
-from components.etl.prompt_tracer import PromptTracer
+# from logic.prompts.media_editor_agent5.positioning import Placement
+# from logic.prompts.media_editor_agent5.tools import DeleteElement
+# from logic.prompts.media_editor_agent5.state import StockClipState, CutOutState, TextOverlayState, BackgroundPlateState
+# from logic.prompts.media_editor_agent5.elements import BackgroundPlate, TextOverlay, CutOut, StockClip
+# from logic.resources.state_embeddings import RagStateViewVectorizer, StateViewMetadata
+# from components.etl.rag_manager import RagVectorSpace
+# from components.etl.prompt_tracer import PromptTracer
 
 
 
-@pytest.mark.asyncio
-async def test_state_view_rag():
+# @pytest.mark.asyncio
+# async def test_state_view_rag():
 
-    state_options = [StockClipState, CutOutState, TextOverlayState, BackgroundPlateState]
-    tool_options = [Placement, StockClip, CutOut, TextOverlay, BackgroundPlate, DeleteElement]
-    vectorizer = RagStateViewVectorizer(state_options, tool_options)
+#     state_options = [StockClipState, CutOutState, TextOverlayState, BackgroundPlateState]
+#     tool_options = [Placement, StockClip, CutOut, TextOverlay, BackgroundPlate, DeleteElement]
+#     vectorizer = RagStateViewVectorizer(state_options, tool_options)
 
 
-    rag_space = RagVectorSpace(
-            "test_state_view",
-            vectorizer,
-            StateViewMetadata,
-        )
+#     rag_space = RagVectorSpace(
+#             "test_state_view",
+#             vectorizer,
+#             StateViewMetadata,
+#         )
 
-    try:
+#     try:
 
 
         
-        await rag_space.delete_all()
+#         await rag_space.delete_all()
 
 
 
-        example_data = json.load(open("components/__tests__/data/rag/rag_state_view.json", "r"))
-        example0 = example_data[0]
-        example1 = example_data[1]
-        example2 = example_data[2]
-        example3 = example_data[3]
+#         example_data = json.load(open("components/__tests__/data/rag/rag_state_view.json", "r"))
+#         example0 = example_data[0]
+#         example1 = example_data[1]
+#         example2 = example_data[2]
+#         example3 = example_data[3]
 
-        embs1 = await rag_space.vectorizer.embed_query(RagVector[StateViewMetadata](**example1).metadata)
-        embs1
-        embs2 = await rag_space.vectorizer.embed_query(RagVector[StateViewMetadata](**example2).metadata)
-        embs22 = await rag_space.vectorizer.embed_query(RagVector[StateViewMetadata](**example2).metadata)
+#         embs1 = await rag_space.vectorizer.embed_query(RagVector[StateViewMetadata](**example1).metadata)
+#         embs1
+#         embs2 = await rag_space.vectorizer.embed_query(RagVector[StateViewMetadata](**example2).metadata)
+#         embs22 = await rag_space.vectorizer.embed_query(RagVector[StateViewMetadata](**example2).metadata)
         
-        assert embs1.dense == embs2.dense
-        assert embs1.sparse != embs2.sparse
-        assert embs2.sparse == embs22.sparse
+#         assert embs1.dense == embs2.dense
+#         assert embs1.sparse != embs2.sparse
+#         assert embs2.sparse == embs22.sparse
 
-        await rag_space.add_many([example3])
+#         await rag_space.add_many([example3])
 
-        saved_examples = await rag_space.get_many()
-        len(saved_examples) == 1
+#         saved_examples = await rag_space.get_many()
+#         len(saved_examples) == 1
 
-        similar0 = await rag_space.similarity(StateViewMetadata(**example0["metadata"]), alpha=0.5)
-        similar1 = await rag_space.similarity(StateViewMetadata(**example1["metadata"]), alpha=0.5)
-        similar2 = await rag_space.similarity(StateViewMetadata(**example2["metadata"]), alpha=0.5)
+#         similar0 = await rag_space.similarity(StateViewMetadata(**example0["metadata"]), alpha=0.5)
+#         similar1 = await rag_space.similarity(StateViewMetadata(**example1["metadata"]), alpha=0.5)
+#         similar2 = await rag_space.similarity(StateViewMetadata(**example2["metadata"]), alpha=0.5)
 
-        assert similar0[0].score < similar1[0].score
-        assert similar1[0].score < similar2[0].score
-    finally:
-        await rag_space.delete_all()
+#         assert similar0[0].score < similar1[0].score
+#         assert similar1[0].score < similar2[0].score
+#     finally:
+#         await rag_space.delete_all()
         

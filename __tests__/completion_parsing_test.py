@@ -1,7 +1,7 @@
 import re
 from openai import BaseModel
 import pytest
-from components.etl.completion_parsing import parse_completion, auto_split_completion, sanitize_content, to_dict
+from chatboard.text.llms.completion_parsing import parse_completion, auto_split_completion, sanitize_content, to_dict
 
 
 stream_test_chunks = [
