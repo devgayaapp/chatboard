@@ -1,15 +1,13 @@
 
-import json
 from time import time
 from typing import Any, Coroutine, Dict, List, Optional, Tuple, TypeVar, Generic, Union
 
-import aiohttp
 from langchain.chat_models import ChatOpenAI
 
 
 # from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage, AIMessage
 from .system_conversation import AIMessage, Conversation, HumanMessage, SystemMessage, from_langchain_message
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from .tracer import Tracer
 import tiktoken
 import yaml
@@ -66,129 +64,45 @@ class LlmChunk(BaseModel):
     finish: Optional[bool] = False
 
 
-class PhiLlmClient(BaseModel):
-    url: str = "http://localhost:3000/complete"
-    # url: str = "http://skynet/text/complete"
-
-    async def fetch(self, session, url, data=None):
-        headers = {'Content-Type': 'application/json'}  # Ensure headers specify JSON
-        async with session.post(url, data=json.dumps(data), headers=headers) as response:
-            return await response.text(), response.status
-
-    def preprocess(self, msgs):
-        prompt = ""
-        for msg in msgs:
-            if msg.role == "system":
-                prompt += f"""
-    Instruct: {msg.content}
-    Output: Ok got it!
-    """
-            elif msg.role == "user":
-                prompt += f"Instruct: {msg.content}\n"
-            elif msg.role == "assistant":
-                prompt += f"Output: {msg.content}\n"
-        prompt += "Output:"
-        return prompt
+class OpenAiLLM:
 
 
-    # async def complete(self, msgs, max_tokens=200, stop_sequences=[]):
-    #     prompt = self.preprocess(msgs)
-    #     async with aiohttp.ClientSession() as session:        
-    #         content, status = await self.fetch(session, self.url, data={
-    #             "prompt": prompt,
-    #             "max_new_tokens": max_tokens,
-    #             "stop_sequences": stop_sequences        
-    #         })
-    #         return content
-    async def complete(self, msgs, **kwargs):
-        prompt = self.preprocess(msgs)
-        async with aiohttp.ClientSession() as session:        
-            content, status = await self.fetch(session, self.url, data={
-                "prompt": prompt,
-                "max_new_tokens": kwargs.get("max_tokens", 200),
-                "stop_sequences": kwargs.get("stop", [])        
-            })
-            # return content
-            return AIMessage(content=content)
-
-
-class OpenAiLlmClient:
-
-
-    def __init__(self):
+    def __init__(
+            self, 
+            model=DEFAULT_MODEL,
+            # model='gpt-3.5-turbo-1106',
+            name="OpenAiLLM",
+            temperature=None, 
+            max_tokens=None, 
+            stop_sequences=None,
+            stream=False,            
+            logit_bias=None,            
+            top_p=None,
+            presence_penalty=None,
+            frequency_penalty=None,
+            suffix=None, 
+            is_traceable=True, 
+            seed=None          
+        ) -> None:
+        if model is not None and model not in chat_models:
+            raise ValueError(f"model ({model}) must be one of {chat_models}")
+        self.name = name
         self.client = openai.AsyncClient()
-
-    def preprocess(self, msgs):
-        return [msg.to_openai() for msg in msgs]
-
-    async def complete(self, msgs, **kwargs):
-        msgs = self.preprocess(msgs)
-        openai_completion = await self.client.chat.completions.create(
-            messages=msgs,
-            **kwargs
-        )
-        output = openai_completion.choices[0].message
-        return AIMessage(content=output.content)
-        # return output
-
-
-
-class LLM(BaseModel):
-
-    # model="gpt-3.5-turbo-0125"
-    # name="OpenAiLLM"
-    model: str
-    name: str
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    stop_sequences: Optional[List[str]] = None
-    stream: Optional[bool] = False
-    logit_bias: Optional[Dict[str, int]] = None
-    top_p: Optional[float] = None
-    presence_penalty: Optional[float] = None
-    frequency_penalty: Optional[float] = None
-    is_traceable: Optional[bool] = True
-    seed: Optional[int] = None
-    client: Union[OpenAiLlmClient, PhiLlmClient]
-
-    class Config:
-        arbitrary_types_allowed = True
-    # def __init__(
-    #         self, 
-    #         model=DEFAULT_MODEL,
-    #         # model='gpt-3.5-turbo-1106',
-    #         name="OpenAiLLM",
-    #         temperature=None, 
-    #         max_tokens=None, 
-    #         stop_sequences=None,
-    #         stream=False,            
-    #         logit_bias=None,            
-    #         top_p=None,
-    #         presence_penalty=None,
-    #         frequency_penalty=None,
-    #         suffix=None, 
-    #         is_traceable=True, 
-    #         seed=None          
-    #     ) -> None:
-    #     if model is not None and model not in chat_models:
-    #         raise ValueError(f"model ({model}) must be one of {chat_models}")
-    #     self.name = name
-    #     self.client = openai.AsyncClient()
-    #     self.model = model
-    #     self.temperature = temperature
-    #     self.max_tokens = max_tokens
-    #     self.stop_sequences = stop_sequences
-    #     self.stream = stream
-    #     self.seed = seed
-    #     self.logit_bias = None
-    #     if logit_bias:
-    #         self.logit_bias = encode_logits_dict(logit_bias, tiktoken.get_encoding("cl100k_base"))
-    #     self.top_p = top_p
-    #     self.presence_penalty = presence_penalty
-    #     self.frequency_penalty = frequency_penalty
-    #     self.suffix = suffix
-    #     self.is_traceable = is_traceable
-    #     # self.encoding_model = tiktoken.get_model(model)
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.stop_sequences = stop_sequences
+        self.stream = stream
+        self.seed = seed
+        self.logit_bias = None
+        if logit_bias:
+            self.logit_bias = encode_logits_dict(logit_bias, tiktoken.get_encoding("cl100k_base"))
+        self.top_p = top_p
+        self.presence_penalty = presence_penalty
+        self.frequency_penalty = frequency_penalty
+        self.suffix = suffix
+        self.is_traceable = is_traceable
+        # self.encoding_model = tiktoken.get_model(model)
 
 
 
@@ -220,9 +134,9 @@ class LLM(BaseModel):
             if frequency_penalty > 2.0 or frequency_penalty < -2.0:
                 raise ValueError("frequency_penalty must be between -2.0 and 2.0")
             model_kwargs['frequency_penalty'] = frequency_penalty
-        # suffix = kwargs.get("suffix", self.suffix)
-        # if suffix:
-        #     model_kwargs['suffix'] = suffix
+        suffix = kwargs.get("suffix", self.suffix)
+        if suffix:
+            model_kwargs['suffix'] = suffix
         temperature = kwargs.get("temperature", self.temperature)
         if temperature is not None:
             model_kwargs['temperature'] = temperature
@@ -242,7 +156,7 @@ class LLM(BaseModel):
         return model_kwargs
 
 
-    async def complete(self, msgs, tracer_run=None, metadata={}, completion=None, **kwargs):
+    async def send(self, openai_messages, tracer_run, metadata={}, completion=None, **kwargs):
 
         llm_kwargs = self.get_llm(**kwargs)
 
@@ -258,18 +172,17 @@ class LLM(BaseModel):
             tracer_run=tracer_run,
             run_type="llm",
             name=self.name,
-            inputs={"messages": [msg.to_openai() for msg in msgs]},
+            inputs={"messages": openai_messages},
             extra=extra,
         ) as llm_run:
         
             # output = await self.llm.ainvoke(messages)
-            # openai_completion = await self.client.chat.completions.create(
-            #     messages=openai_messages,
-            #     **llm_kwargs
-            # )
-            completion = await self.client.complete(msgs, **llm_kwargs)
-            llm_run.end(outputs=completion)
-            return completion
+            openai_completion = await self.client.chat.completions.create(
+                messages=openai_messages,
+                **llm_kwargs
+            )
+            llm_run.end(outputs=openai_completion)
+            return openai_completion
         
 
     async def send_stream(self, openai_messages, tracer_run, metadata={}, completion=None, **kwargs):
@@ -353,18 +266,6 @@ class LLM(BaseModel):
         
 
 
-class OpenAILLM(LLM):
-    name: str = "OpenAiLLM"
-    client: Union[OpenAiLlmClient, PhiLlmClient] = Field(default_factory=OpenAiLlmClient)
-    model: str = "gpt-3.5-turbo-0125"
-
-
-
-class PhiLLM(LLM):
-    name: str = "PhiLLM"
-    stop_sequences: List[str]=["Instruct"]
-    client: Union[OpenAiLlmClient, PhiLlmClient] = Field(default_factory=PhiLlmClient)
-    model: str = "microsoft/phi-2"
 
 
 class CustomMessage(BaseModel):
@@ -416,7 +317,3 @@ def custom_completion(completion):
             "total_tokens": 1276
         }
     }
-
-
-
-

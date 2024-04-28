@@ -31,7 +31,7 @@ import tiktoken
 # from config import PROMPT_REPO_HOME
 from .completion_parsing import auto_split_completion, auto_split_list_completion, is_list_model, parse_completion, parse_model_list, unpack_list_model
 from .conversation import SystemConversation, AIMessage, Conversation, ConversationRag, HumanMessage, SystemMessage, from_langchain_message
-from .llm import OpenAiLLM
+from .openai_llm import OpenAiLLM
 from .prompt_manager import PromptManager
 from .rag_manager import RagVectorSpace
 from .tracer import Tracer

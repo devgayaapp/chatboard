@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.generics import GenericModel
 from langchain_core.utils.function_calling import convert_to_openai_tool
 import tiktoken
+import textwrap
 
 from chatboard.text.vectors.rag_documents import RagDocuments
 
@@ -33,7 +34,7 @@ from chatboard.text.vectors.rag_documents import RagDocuments
 # from config import PROMPT_REPO_HOME
 from .completion_parsing import auto_split_completion, auto_split_list_completion, is_list_model, parse_completion, parse_model_list, unpack_list_model
 from .conversation import SystemConversation, AIMessage, Conversation, ConversationRag, HumanMessage, SystemMessage, from_langchain_message
-from .llm import OpenAiLLM
+from .openai_llm import OpenAiLLM
 from .prompt_manager import PromptManager
 from .rag_manager import RagVectorSpace
 from .tracer import Tracer
@@ -168,11 +169,12 @@ def validate_input_variables(kwargs, input_variables):
 
 
 class Prompt(BaseModel):
-    promptpath: str=None
-    system_prompt: str=None
+    # promptpath: str=None
+    system_prompt: str=None    
     model: str= "gpt-3.5-turbo-0125"
     # _func=None
     name: str
+    llm: OpenAiLLM = Field(default_factory=OpenAiLLM)
     # filename: str=None
     # rag_length: int=None    
     # rag: RagDocuments= Field(default_factory=RagDocuments)
@@ -195,10 +197,16 @@ class Prompt(BaseModel):
     # top_p: float=None
     # presence_penalty: float=None
     # frequency_penalty: float=None    
-    # is_traceable: bool=True,
+    is_traceable: bool=True,
     # seed: int = None                 
     class Config:
         arbitrary_types_allowed = True
+
+
+    # def __init__(
+    #     self        
+    # ):
+        
 
     # def __init__(
     #         self,            
@@ -367,8 +375,83 @@ class Prompt(BaseModel):
             "rag_index": self.rag_index,
         }
     
+    # async def system_prompt(self, **kwargs):
+    #     return None
 
-    async def __call__(self, prompt=None, conversation= None, tracer_run=None, **kwargs: Any) -> Any:
+    # async def prompt(self, **kwargs):
+    #     return "Say something"
+    async def render_system_prompt(self, **kwargs):
+        return None
+
+    async def render_prompt(self, **kwargs):
+        return "Say something"
+    
+    async def _get_prompt_msg(self, **kwargs):
+        if kwargs.get('prompt'):
+            prompt = kwargs['prompt']
+            return HumanMessage(content=prompt)
+        prompt = await self.render_prompt(**kwargs)
+        prompt = textwrap.dedent(prompt).strip()
+        return HumanMessage(content=prompt) 
+    
+    async def _get_system_msg(self, **kwargs):
+        if self.system_prompt is not None:
+            return SystemMessage(content=self.system_prompt)
+        system_prompt = await self.render_system_prompt(**kwargs)
+        if system_prompt is None:
+            return None
+        system_prompt = textwrap.dedent(system_prompt).strip()
+        return SystemMessage(content=system_prompt)
+
+
+    async def render_prompts(self, **kwargs):
+        system_msg = await self._get_system_msg(**kwargs)
+        prompt_msg = await self._get_prompt_msg(**kwargs)        
+        return prompt_msg, system_msg
+            
+
+    async def conversation(self, **kwargs: Any):
+        prompt_msg, system_msg = await self.render_prompts(**kwargs)
+        return [
+            system_msg,
+            prompt_msg
+        ]
+
+    async def __call__(self, prompt=None, tracer_run=None, **kwargs: Any) -> Any:
+        if prompt is not None:
+            kwargs['prompt'] = prompt
+        log_kwargs = {}
+        log_kwargs.update(kwargs)        
+        # extra = self.get_extra(**kwargs)
+        
+        if prompt is not None:
+            log_kwargs['prompt'] = prompt
+        with Tracer(
+            is_traceable=self.is_traceable,
+            tracer_run=tracer_run,
+            name=self.name,
+            run_type="prompt",
+            inputs={
+                "input": log_kwargs,                
+                # "messages": conversation.messages
+            },
+            # extra=extra,
+        ) as prompt_run:
+            msgs = await self.conversation(**kwargs)
+            msgs = [m for m in msgs if m is not None]
+            # openai_msgs = [m.to_openai() for m in msgs]
+            completion_msg = await self.llm.complete(
+                    msgs=msgs, 
+                    tracer_run=prompt_run, 
+                    # metadata=system_conversation.get_metadata(),            
+                    **kwargs
+                )
+            # output = openai_completion.choices[0].message
+
+            prompt_run.end(outputs={'output': completion_msg})
+            return completion_msg
+
+    async def __call__2(self, prompt=None, conversation= None, tracer_run=None, **kwargs: Any) -> Any:
         
         system_conversation = await self.build_conversation(prompt, conversation, **kwargs)
         # prompt_run = self.get_tracer(kwargs, prompt_metadata)
