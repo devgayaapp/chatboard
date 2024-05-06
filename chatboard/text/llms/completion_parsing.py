@@ -127,16 +127,47 @@ def split_item_list(text, field):
 
 
 def parse_completion(completion, pydantic_model):
+    """Parse completion into a Pydantic model instance.
+    the function searchs for the fields in the completion and assigns the content to the corresponding field.
+    the completion is split into chunks and the function iterates over the chunks to find the fields.
+    the fields can be multi-line and the function will concatenate the content until the next field is found.
+    """
     output = ''
     output = to_dict(pydantic_model)
     curr_field = None
     curr_content = ""
     for chunk in split_rows(completion):
-        output, curr_field, curr_content = auto_split_completion(curr_content, chunk, output, curr_field, pydantic_model)
+        output, curr_field, curr_content = auto_split_row_completion(curr_content, chunk, output, curr_field, pydantic_model)
     else:
-        output[curr_field] = sanitize_content(curr_content)
+        if curr_field and output.get(curr_field) is None:
+            output[curr_field] = sanitize_content(curr_content)        
     
     return pydantic_model(**output)
+
+
+def auto_split_row_completion(curr_content, chunk, output, curr_field, pydantic_model):
+    curr_content += chunk
+    for field_name, field_info in pydantic_model.__fields__.items():
+        if search_field(field_name, curr_content):
+            prev_content, curr_content = split_field(field_name, curr_content)
+            if curr_field:
+                # another field had been found, so we assign the content to the previous field                
+                output[curr_field] = sanitize_content(prev_content)
+            curr_field = field_name
+            if field_info.type_ == int:                    
+                output[field_name] = int(sanitize_content(curr_content))
+                curr_field = None
+                curr_content = ""
+            elif field_info.type_ == float:
+                output[field_name] = float(sanitize_content(curr_content))
+                curr_field = None
+                curr_content = ""
+            elif field_info.type_ == bool:
+                output[field_name] = bool(sanitize_content(curr_content))
+                curr_field = None
+                curr_content = ""
+    return output, curr_field, curr_content
+
 
 
 
@@ -146,6 +177,7 @@ def auto_split_completion(curr_content, chunk, output, curr_field, pydantic_mode
         if search_field(field_name, curr_content):
             prev_content, curr_content = split_field(field_name, curr_content)
             if prev_content and curr_field:
+                """another field had been found, so we assign the content to the previous field"""
                 output[curr_field] = sanitize_content(prev_content)
             curr_field = field_name
     return output, curr_field, curr_content

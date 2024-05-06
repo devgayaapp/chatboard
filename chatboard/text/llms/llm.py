@@ -43,6 +43,9 @@ chat_models = [
 
 
 
+class LlmError(Exception):
+    pass
+
 
 
 def encode_logits(string: str, bias_value: int, encoding_model: str) -> int:
@@ -68,15 +71,23 @@ class LlmChunk(BaseModel):
 
 
 class PhiLlmClient(BaseModel):
-    url: str = "http://localhost:3000/complete"
+    # url: str = "http://localhost:3000/complete"
     # url: str = "http://skynet/text/complete"
+    # url: str = "http://skynet/text/complete_chat"
+    # url: str = "http://skynet1/text/complete_chat"
+    url: str = "http://skynet1:31001/complete_chat"
+    
+    # url: str = "http://localhost:3000/complete_chat"
+    # url: str = "http://localhost:8001/complete"
+    # url: str = "http://localhost:8001/complete_chat"
+    # url: str = "http://skynet1/text/complete"
 
     async def fetch(self, session, url, data=None):
         headers = {'Content-Type': 'application/json'}  # Ensure headers specify JSON
         async with session.post(url, data=json.dumps(data), headers=headers) as response:
             return await response.text(), response.status
 
-    def preprocess(self, msgs):
+    def preprocess_complete(self, msgs):
         prompt = ""
         for msg in msgs:
             if msg.role == "system":
@@ -91,7 +102,8 @@ class PhiLlmClient(BaseModel):
         prompt += "Output:"
         return prompt
 
-
+    def preprocess(self, msgs):
+        return [m.dict() for m in msgs]
     # async def complete(self, msgs, max_tokens=200, stop_sequences=[]):
     #     prompt = self.preprocess(msgs)
     #     async with aiohttp.ClientSession() as session:        
@@ -101,16 +113,30 @@ class PhiLlmClient(BaseModel):
     #             "stop_sequences": stop_sequences        
     #         })
     #         return content
+    # async def complete(self, msgs, **kwargs):
+    #     prompt = self.preprocess(msgs)
+    #     async with aiohttp.ClientSession() as session:        
+    #         content, status = await self.fetch(session, self.url, data={
+    #             # "prompt": prompt,
+    #             "max_new_tokens": kwargs.get("max_tokens", 200),
+    #             "stop_sequences": kwargs.get("stop", [])        
+    #         })
+    #         # return content
+    #         return AIMessage(content=content)
+
     async def complete(self, msgs, **kwargs):
-        prompt = self.preprocess(msgs)
+        msgs = self.preprocess(msgs)
         async with aiohttp.ClientSession() as session:        
             content, status = await self.fetch(session, self.url, data={
-                "prompt": prompt,
+                # "prompt": prompt,
+                "messages": msgs,
                 "max_new_tokens": kwargs.get("max_tokens", 200),
                 "stop_sequences": kwargs.get("stop", [])        
             })
-            # return content
-            return AIMessage(content=content)
+            if status != 200:
+                raise LlmError(content)
+            res_msg = json.loads(content)            
+            return AIMessage(content=res_msg['content'])
 
 
 class OpenAiLlmClient:
