@@ -16,7 +16,8 @@ setup(
         'text': [
             "langchain==0.1.9",
             "langchain-openai==0.0.5",
-            "pydantic==1.10.4",
+            # "pydantic==1.10.4",
+            "pydantic>=1.10.4, <3",
             "tiktoken==0.5.2",
             "pinecone-client==3.0.1",
             "pinecone-text==0.7.0",
