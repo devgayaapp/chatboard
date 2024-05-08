@@ -19,11 +19,17 @@ def parse_model_list(completion, pydantic_model, delimiter=","):
         if len(row_split) != len(pydantic_model.__fields__.keys()):
             raise PromptParsingException(f"Row {row} does not have the correct number of fields")
         for i, (field_name, field_info) in enumerate(pydantic_model.__fields__.items()):
-            if field_info.type_ == str:
+            # if field_info.type_ == str:
+            #     row_split[i] = sanitize_text(row_split[i])
+            # elif field_info.type_ == float:
+            #     row_split[i] = float(row_split[i])
+            # elif field_info.type_ == int:
+            #     row_split[i] = int(row_split[i])        
+            if field_info.annotation == str:
                 row_split[i] = sanitize_text(row_split[i])
-            elif field_info.type_ == float:
+            elif field_info.annotation == float:
                 row_split[i] = float(row_split[i])
-            elif field_info.type_ == int:
+            elif field_info.annotation == int:
                 row_split[i] = int(row_split[i])        
         segments.append(pydantic_model(**{k: v for k, v in zip(pydantic_model.__fields__.keys(), row_split)}))
     return segments

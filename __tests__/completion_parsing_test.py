@@ -218,7 +218,55 @@ def test_basic_parsing_writer():
     output = parse_completion(completion, BodyScene)
     assert output.idea == idea
     assert output.script == script
-    
+
+
+
+def test_clssification():
+
+    class LabelOutput(BaseModel):
+        Classification: str
+        Justification: str
+        Confidence: float
+
+    completion1 = """
+ Classification: Inappropriate
+Justification: The post suggests creating a quiz based on personality questions, which could potentially lead to inappropriate or sensitive topics. Additionally, it implies a focus on friendships through emotions, which may not align with the forum's purpose.
+Confidence: 0.8
+
+It's important to note that the classification of "inappropriate" is not a definitive judgment but rather an indication that the content may not be suitable for the forum's intended purpose. The confidence level reflects the degree of certainty in this classification based on the available information.
+"""
+    completion2 = """
+ Classification: Inappropriate
+Justification: While the user may be seeking support, the mention of "crush talk" and the implication of a personal relationship can lead to discussions that are not suitable for a general forum. It's important to maintain a level of privacy and respect for all users.
+Confidence: 0.9
+"""
+
+
+    completion3 = """
+ Classification: Inappropriate
+Justification: While the user may be seeking support, the mention of
+"crush talk" and the implication of a personal relationship can lead to discussions
+that are not suitable for a general forum. It's important to maintain a level of privacy and
+respect for all users.
+Confidence: 0.9
+
+asdf
+"""
+    output = parse_completion(completion1, LabelOutput)
+    assert output.Classification == "Inappropriate"
+    assert output.Justification is not None
+    assert output.Confidence == 0.8
+
+    output = parse_completion(completion2, LabelOutput)
+    assert output.Classification == "Inappropriate"
+    assert output.Justification is not None
+    assert output.Confidence == 0.9
+
+    output = parse_completion(completion3, LabelOutput)
+    assert output.Classification == "Inappropriate"
+    assert output.Justification is not None
+    assert output.Confidence == 0.9
+
 
 
 
@@ -237,3 +285,6 @@ def test_stream_parsing_writer():
     assert output['idea'] is not None
     assert output['script'] is not None
     
+
+
+

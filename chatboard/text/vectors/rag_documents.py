@@ -91,20 +91,49 @@ class RagDocuments(Generic[K, V]):
         return rag_results
         # return [RagDocMetadata(id=res.id, key=res.key, value=res.value) for res in results]
 
+    
 
-    async def add_documents(self, keys: List[K], values: List[V], ids=None):
+
+    async def add_documents(self, keys: List[K], values: List[V], ids: List[Union[int, str]]=None):
+        if type(keys) != list:
+            raise ValueError("keys must be a list")
+        if type(values) != list:
+            raise ValueError("values must be a list")
+        if ids is not None and type(ids) != list:
+            raise ValueError("ids must be a list")
+        
+        for i, key in enumerate(keys):
+            if type(key) != self.key_class:
+                raise ValueError(f"key at index {i} is not of type {self.key_class}")
+        for i, value in enumerate(values):
+            if type(value) != self.value_class:
+                raise ValueError(f"value at index {i} is not of type {self.value_class}")
+        
         vectors = await self._embed_documents(keys)
         if ids is None:
             ids = [str(uuid4()) for _ in range(len(keys))]
         documents = [RagDocMetadata[self.key_class, self.value_class](id=i, key=key, value=value) for i, key, value in zip(ids, keys, values)]
         outputs = await self.vector_store.add_documents(vectors, documents, namespace=self.namespace)
         return outputs
+    
+
+    async def add_examples(self, examples: List[RagSearchResult]):
+        keys = [example.metadata.key for example in examples]
+        values = [example.metadata.value for example in examples]
+        ids = [example.id for example in examples]
+        return await self.add_documents(keys, values, ids)
+    
 
 
     async def similarity(self, query: K, top_k=3, filters=None, alpha=None):
         query_vector = await self._embed_documents([query])
         query_vector = query_vector[0]
         res = await self.vector_store.similarity(query_vector, top_k, filters, alpha)
+        return self._pack_results(res)
+    
+
+    async def get_many(self, top_k=10):
+        res = await self.vector_store.get_many(top_k=top_k, with_payload=True)
         return self._pack_results(res)
 
 

@@ -10,8 +10,6 @@ import random
 from typing import Any, Coroutine, Dict, List, Optional, Tuple, TypeVar, Generic, Union
 
 
-from langchain.llms import OpenAI
-from langchain.chat_models import ChatOpenAI
 from langsmith.run_trees import RunTree
 
 

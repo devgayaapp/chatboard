@@ -40,10 +40,14 @@ class QdrantVectorStore(VectorStoreBase):
     def __init__(
         self,
         collection_name: str,
+        url: str=None,
+        api_key: str=None,
         ) -> None:
+        url = url or os.environ.get("QDRANT_URL")
+        api_key = api_key or os.environ.get("QDRANT_API_KEY", None)
         self.client = AsyncQdrantClient(
-            url=os.environ.get("QDRANT_URL"),
-            api_key=os.environ.get("QDRANT_API_KEY", None),
+            url=url,
+            api_key=api_key,
             # host=os.environ['QDRANT_HOST'], 
             # port=os.environ['QDRANT_PORT']
         )
@@ -111,7 +115,7 @@ class QdrantVectorStore(VectorStoreBase):
 
 
     async def add_documents(self, vectors, metadata: List[Union[Dict, BaseModel]], ids=None, namespace=None, batch_size=100):
-        metadata = [m.dict() if isinstance(m, BaseModel) else m for m in metadata]
+        metadata = [m.dict(exclude={'__orig_class__'}) if isinstance(m, BaseModel) else m for m in metadata]
         if not ids:
             ids = [str(uuid4()) for i in range(len(vectors))]
         
@@ -163,6 +167,10 @@ class QdrantVectorStore(VectorStoreBase):
             with_vectors=with_vectors,
         )
         return self._pack_points(recs)
+
+
+    async def info(self):
+        return await self.client.get_collection("toxisity_rag")
 
 # class QdrantVectorStore():
 
