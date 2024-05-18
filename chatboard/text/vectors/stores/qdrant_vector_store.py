@@ -17,6 +17,10 @@ class VectorSearchResult(BaseModel):
     id: str
     score: float
     metadata: Any
+    vector: Optional[Dict[str, Any]] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 
@@ -60,7 +64,8 @@ class QdrantVectorStore(VectorStoreBase):
             rec = VectorSearchResult(
                 id=p.id,
                 score=p.score if hasattr(p, "score") else -1,
-                metadata=p.payload
+                metadata=p.payload,
+                vector=p.vector
             )
             recs.append(rec)
         return recs
@@ -89,11 +94,12 @@ class QdrantVectorStore(VectorStoreBase):
     #     )
     #     return self._pack_points(recs)    
 
-    async def similarity(self, query, top_k=3, filters=None, alpha=None):        
+    async def similarity(self, query, top_k=3, filters=None, alpha=None, with_vectors=False):        
         query_filter = None
         if filters is not None:
-            must_not = filters.get('must_not', None)
-            must = filters.get('must', None)
+            must_not, must = self.parse_filter(filters)
+            # must_not = filters.get('must_not', None)
+            # must = filters.get('must', None)
             query_filter = models.Filter(
                 must_not=must_not,
                 must=must
@@ -109,12 +115,14 @@ class QdrantVectorStore(VectorStoreBase):
                 query_filter=query_filter,
                 limit=top_k,            
                 with_payload=True,
+                with_vectors=with_vectors,
             )
             return self._pack_points(recs)
 
 
 
     async def add_documents(self, vectors, metadata: List[Union[Dict, BaseModel]], ids=None, namespace=None, batch_size=100):
+        namespace = namespace or self.collection_name
         metadata = [m.dict(exclude={'__orig_class__'}) if isinstance(m, BaseModel) else m for m in metadata]
         if not ids:
             ids = [str(uuid4()) for i in range(len(vectors))]
@@ -128,7 +136,7 @@ class QdrantVectorStore(VectorStoreBase):
                 )
                 for id_, vec, meta in vector_chunk]
             await self.client.upsert(
-                collection_name=self.collection_name,
+                collection_name=namespace,
                 points=points
             )
 
@@ -171,6 +179,41 @@ class QdrantVectorStore(VectorStoreBase):
 
     async def info(self):
         return await self.client.get_collection("toxisity_rag")
+
+
+    def parse_filter(self, filters: Dict[str, Any]):
+
+        must = []
+        must_not = []
+
+        def is_range(value):    
+            for k, v in value.items():
+                if k not in ["$gt", "$gte", "$lt", "$lte"]:
+                    return False
+            return True
+
+        def unpack_range(value):
+            models.Range(
+                gt=value.get('$gt', None),
+                gte=value.get('$gte', None),
+                lt=value.get('$lt', None),
+                lte=value.get('$lte', None),
+            )
+
+        for field, value in filters.items():
+            if type(value) == dict:
+                if is_range(value):
+                    must.append(models.FieldCondition(key=field, range=unpack_range(value)))
+                else:
+                    for k, v in value.items():
+                        if k == "$ne":
+                            must_not.append(models.FieldCondition(key=field, match=models.MatchValue(value=v)))
+                        elif k == "$eq":
+                            must.append(models.FieldCondition(key=field, match=models.MatchValue(value=v)))
+            else:
+                must.append(models.FieldCondition(key=field, match=models.MatchValue(value=value)))
+
+        return must_not, must
 
 # class QdrantVectorStore():
 

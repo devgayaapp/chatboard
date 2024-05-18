@@ -15,10 +15,14 @@ V = TypeVar('V', bound=BaseModel)
 
 
 
-class RagDocMetadata(Generic[K, V], BaseModel):
-    id: Union[str, int]
-    key: Optional[Union[K, str]]
-    value: Union[V, str]
+# class RagDocMetadata(Generic[K, V], BaseModel):
+#     id: Union[str, int]
+#     key: Optional[Union[K, str]]
+#     value: Union[V, str]
+# class RagDocMetadata:
+    
+    
+    
 
 
 
@@ -30,10 +34,15 @@ class RagDocMetadata(Generic[K, V], BaseModel):
 class RagSearchResult(BaseModel):
     id: str
     score: float
-    metadata: RagDocMetadata[K, V]
+    metadata: Any
+    vector: Optional[Dict[str, Any]] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
-class RagDocuments(Generic[K, V]):
+
+class RagDocuments:
 
     def __init__(
             self, 
@@ -41,7 +50,7 @@ class RagDocuments(Generic[K, V]):
             vectorizers: List[VectorizerBase] = [], 
             vector_store: VectorStoreBase = None, 
             key_class: Union[Type[K], str] = str, 
-            value_class: Union[Type[V], str] = str
+            metadata_class: Union[Type[V], str] = str
         ) -> None:
         self.namespace = namespace
         if vector_store is None:
@@ -53,7 +62,7 @@ class RagDocuments(Generic[K, V]):
         else:
             self.vectorizers = vectorizers
         self.key_class = key_class
-        self.value_class = value_class
+        self.metadata_class = metadata_class
 
     async def _embed_documents(self, documents: List[K]):
         embeds = await asyncio.gather(
@@ -71,22 +80,16 @@ class RagDocuments(Generic[K, V]):
     def _pack_results(self, results):
         rag_results = []
         for res in results:
-            if self.key_class == str:
-                key = res.metadata["key"]
-            else:
-                key = self.key_class(**res.metadata["key"])
-            if self.value_class == str:
-                value = res.metadata["value"]
-            else:
-                value = self.value_class(**res.metadata["value"])
+            # if self.key_class == str:
+            #     key = res.metadata["key"]
+            # else:
+            #     key = self.key_class(**res.metadata["key"])
+            metadata = self.metadata_class(**res.metadata)
             rag_results.append(RagSearchResult(
                 id=res.id, 
                 score=res.score, 
-                metadata=RagDocMetadata[self.key_class, self.value_class](
-                    id=res.id, 
-                    key=key, 
-                    value=value
-                )
+                metadata=metadata,
+                vector=res.vector
             ))
         return rag_results
         # return [RagDocMetadata(id=res.id, key=res.key, value=res.value) for res in results]
@@ -94,10 +97,10 @@ class RagDocuments(Generic[K, V]):
     
 
 
-    async def add_documents(self, keys: List[K], values: List[V], ids: List[Union[int, str]]=None, include_key=True):
+    async def add_documents(self, keys: List[K], metadata: List[V], ids: List[Union[int, str]]=None):
         if type(keys) != list:
             raise ValueError("keys must be a list")
-        if type(values) != list:
+        if type(metadata) != list:
             raise ValueError("values must be a list")
         if ids is not None and type(ids) != list:
             raise ValueError("ids must be a list")
@@ -105,16 +108,17 @@ class RagDocuments(Generic[K, V]):
         for i, key in enumerate(keys):
             if type(key) != self.key_class:
                 raise ValueError(f"key at index {i} is not of type {self.key_class}")
-        for i, value in enumerate(values):
-            if type(value) != self.value_class:
-                raise ValueError(f"value at index {i} is not of type {self.value_class}")
+        for i, value in enumerate(metadata):                
+            if type(value) != self.metadata_class:
+                raise ValueError(f"value at index {i} is not of type {self.metadata_class}")
         
         vectors = await self._embed_documents(keys)
         if ids is None:
             ids = [str(uuid4()) for _ in range(len(keys))]
             
-        documents = [RagDocMetadata[self.key_class, self.value_class](id=i, key=key if include_key else None, value=value) for i, key, value in zip(ids, keys, values)]
-        outputs = await self.vector_store.add_documents(vectors, documents, namespace=self.namespace)
+        # documents = [RagDocMetadata[self.key_class, self.value_class](id=i, key=key if include_key else None, value=value) for i, key, value in zip(ids, keys, values)]
+        # documents = [self.metadata_class(id=i, **value.dict()) for i, value in zip(ids, metadata)]
+        outputs = await self.vector_store.add_documents(vectors, metadata, namespace=self.namespace)
         return outputs
     
 
@@ -126,10 +130,16 @@ class RagDocuments(Generic[K, V]):
     
 
 
-    async def similarity(self, query: K, top_k=3, filters=None, alpha=None):
+    async def similarity(self, query: K, top_k=3, filters=None, alpha=None, with_vectors=False):
         query_vector = await self._embed_documents([query])
         query_vector = query_vector[0]
-        res = await self.vector_store.similarity(query_vector, top_k, filters, alpha)
+        res = await self.vector_store.similarity(query_vector, top_k, filters, alpha, with_vectors=with_vectors)
+        return self._pack_results(res)
+    
+
+    async def similar_example(self, exmpl: RagSearchResult, top_k=3, filters=None, alpha=None, with_vectors=False):
+        query_vector = exmpl.vector
+        res = await self.vector_store.similarity(query_vector, top_k, filters, alpha, with_vectors=with_vectors)
         return self._pack_results(res)
     
 

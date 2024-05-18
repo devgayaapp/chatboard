@@ -13,6 +13,10 @@ class TextVectorizer(VectorizerBase):
     metric: VectorMetrics = VectorMetrics.COSINE
     
     async def embed_documents(self, documents: List[str]):
+        # for doc in documents:
+            # if len(doc) > 43000:
+                # doc = doc[:43000]
+        documents = [doc[:43000] for doc in documents]
         return await self.dense_embeddings.embed_documents(documents)
     
     async def embed_query(self, query: str):
