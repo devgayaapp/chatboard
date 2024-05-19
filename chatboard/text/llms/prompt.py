@@ -33,7 +33,7 @@ from chatboard.text.vectors.rag_documents import RagDocuments
 from .completion_parsing import auto_split_completion, auto_split_list_completion, is_list_model, parse_completion, parse_model_list, unpack_list_model
 from .conversation import SystemConversation, AIMessage, Conversation, ConversationRag, HumanMessage, SystemMessage, from_langchain_message
 # from .openai_llm import OpenAiLLM
-from .llm import OpenAiLLM
+from .llm import AzureOpenAiLLM, OpenAiLLM
 from .prompt_manager import PromptManager
 from .rag_manager import RagVectorSpace
 from .tracer import Tracer
@@ -180,8 +180,8 @@ class Prompt(BaseModel):
     system_prompt: str=None    
     model: str= "gpt-3.5-turbo-0125"
     # _func=None
-    name: str
-    llm: OpenAiLLM = Field(default_factory=OpenAiLLM)
+    name: Optional[str] = None
+    llm: Union[OpenAiLLM, AzureOpenAiLLM] = Field(default_factory=OpenAiLLM)
     output_class: Optional[BaseModel] = None
     rag_space: Optional[RagDocuments] = None
     rag_namespace: Optional[str] = None
@@ -215,6 +215,8 @@ class Prompt(BaseModel):
 
     def __init__(self, **data):
         super().__init__(**data)
+        if self.name is None:
+            self.name = self.__class__.__name__
         if self.rag_namespace:
             self.rag_space = RagDocuments(self.rag_namespace)
         
