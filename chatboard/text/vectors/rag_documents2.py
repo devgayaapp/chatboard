@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, TypeVar, Union, Optional, Generic, Type
 from uuid import uuid4
 from pydantic import BaseModel
+from chatboard.text.app_manager import app_manager
 from chatboard.text.vectors.stores.base import VectorStoreBase
 from chatboard.text.vectors.stores.qdrant_vector_store import QdrantVectorStore
 from chatboard.text.vectors.vectorizers.base import VectorMetrics, VectorizerBase
@@ -63,6 +64,7 @@ class RagDocuments:
             self.vectorizers = vectorizers
         self.key_class = key_class
         self.metadata_class = metadata_class
+        app_manager.register_rag_space(namespace, metadata_class)
 
     async def _embed_documents(self, documents: List[K]):
         embeds = await asyncio.gather(
