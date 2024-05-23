@@ -2,16 +2,17 @@ import json
 from pathlib import PosixPath
 import boto3
 import io
-from components.image.image import Image
-from components.video.video import Video
-from components.audio.audio import Audio
-from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SCRAPING_BUCKET
+from chatboard.media.image.image import Image
+from chatboard.media.video.video import Video
+from chatboard.media.audio.audio import Audio
+# from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SCRAPING_BUCKET
 from botocore.exceptions import ClientError
 from botocore.client import Config
 import asyncio
+import os
 
-
-
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 class Bucket:
 
     def __init__(self, bucket_name: str) -> None:
