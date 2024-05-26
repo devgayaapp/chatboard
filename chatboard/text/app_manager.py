@@ -32,16 +32,13 @@ class AppManager:
             "metadata_class": convert_to_openai_tool(rag_space["metadata_class"])
         } for namespace, rag_space in self.rag_spaces.items()]
 
-
         return {
             "rag_spaces": rag_space_json,            
         }
-            
-
-
-
-
-
-
+    
+    # def get_rag_manager(self, namespace: str):
+    #     rag_cls = self.rag_spaces[namespace]["metadata_class"]
+    #     ns = self.rag_spaces[namespace]["namespace"]
+    #     return RagDocuments(ns, rag_cls)
 
 app_manager = AppManager()

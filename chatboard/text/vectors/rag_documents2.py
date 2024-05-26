@@ -79,6 +79,7 @@ class RagDocuments:
             vectors.append(vec)
         return vectors
     
+    
     def _pack_results(self, results):
         rag_results = []
         for res in results:
