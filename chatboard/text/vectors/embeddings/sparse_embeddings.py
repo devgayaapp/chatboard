@@ -1,3 +1,4 @@
+from typing import List
 from scipy.sparse import csr_matrix, hstack
 from app.adapters.qdrant import from_sparse_vector
 import numpy as np
@@ -10,10 +11,12 @@ class SparseVector:
     def shape(self):
         return self.mat.shape[1]
 
-    def __init__(self, data, dimentions =None, dim_labels=None):        
+    def __init__(self, csr_mat: csr_matrix, dimentions: List[int] =None, dim_labels: List[str]=None):        
         self.dimentions = dimentions
         self.dim_labels = dim_labels
-        self.mat = data
+        if type(csr_mat) != csr_matrix:
+            raise ValueError("Only CSR matrix is supported")
+        self.mat = csr_mat
         self.agg_dimentions = [sum(dimentions[:i]) for i in range(1, len(dimentions)+1)]
         self.dim_labels_lookup = {}
         for i, lbl in enumerate(dim_labels):
@@ -106,6 +109,10 @@ class SparseVector:
 
         display(HTML(html))
 
+    def get_pandas_df(self):
+        import pandas as pd
+        values = self.get_bins()
+        return pd.DataFrame(values, columns=["Column", "Label", "Value"])
 
     def show3(self):
         import pandas as pd

@@ -10,11 +10,12 @@ from langchain.chat_models import ChatOpenAI
 # from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage, AIMessage
 # from .system_conversation import AIMessage, Conversation, HumanMessage, SystemMessage, from_langchain_message
 from .conversation import AIMessage, Conversation, HumanMessage, SystemMessage, from_langchain_message
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from .tracer import Tracer
 import tiktoken
 import yaml
 import re
+import os
 
 import openai
 from openai.types.chat.chat_completion import ChatCompletion
@@ -142,8 +143,20 @@ class PhiLlmClient(BaseModel):
 class OpenAiLlmClient:
 
 
-    def __init__(self):
-        self.client = openai.AsyncClient()
+    def __init__(self, api_key=None, api_version=None, azure_endpoint=None, azure_deployment=None):
+        if azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT", None):
+            self.client = openai.AsyncAzureOpenAI(
+                api_key=api_key or os.getenv("AZURE_OPENAI_API_KEY"),
+                api_version=api_version or os.getenv("OPENAI_API_VERSION", "2023-12-01-preview"),
+                azure_endpoint=azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT"),
+                azure_deployment=azure_deployment or os.getenv("AZURE_OPENAI_DEPLOYMENT"),
+            ) 
+        elif os.environ.get("OPENAI_API_KEY", None):
+            self.client = openai.AsyncClient(
+                api_key=api_key or os.getenv("OPENAI_API_KEY")
+            )
+        else:
+            raise ValueError("OpenAI API Key not found in environment variables")
 
     def preprocess(self, msgs):
         return [msg.to_openai() for msg in msgs]
@@ -176,10 +189,15 @@ class LLM(BaseModel):
     frequency_penalty: Optional[float] = None
     is_traceable: Optional[bool] = True
     seed: Optional[int] = None
-    client: Union[OpenAiLlmClient, PhiLlmClient]
+    client: Union[OpenAiLlmClient, PhiLlmClient]    
 
     class Config:
         arbitrary_types_allowed = True
+
+
+    # def __init__(self, **data):
+    #     super().__init__(**data)
+    
     # def __init__(
     #         self, 
     #         model=DEFAULT_MODEL,
@@ -381,10 +399,15 @@ class LLM(BaseModel):
 
 
 class OpenAiLLM(LLM):
-    name: str = "OpenAiLLM"
+    name: str = "OpenAiLLM"    
     client: Union[OpenAiLlmClient, PhiLlmClient] = Field(default_factory=OpenAiLlmClient)
     model: str = "gpt-3.5-turbo-0125"
+    api_key: Optional[str] = None
 
+    # def __init__(self, **data):    
+    #     client = OpenAiLlmClient()
+    #     OpenAiLlmClient(api_key=self.api_key)
+    #     super().__init__(**data)
 
 
 class PhiLLM(LLM):
@@ -393,6 +416,26 @@ class PhiLLM(LLM):
     client: Union[OpenAiLlmClient, PhiLlmClient] = Field(default_factory=PhiLlmClient)
     model: str = "microsoft/phi-2"
 
+
+class AzureOpenAiLLM(LLM):
+    name: str = "AzureOpenAiLLM"
+    # client: Union[OpenAiLlmClient, PhiLlmClient] = Field(default_factory=OpenAiLlmClient)
+    client: Union[OpenAiLlmClient, PhiLlmClient] = None
+    model: str = "gpt-3.5-turbo-0125"
+    api_key: Optional[str] = None
+    api_version: Optional[str] = "2023-12-01-preview"
+    azure_endpoint: Optional[str] = None
+    azure_deployment: Optional[str] = None
+    
+
+    def __init__(self, **data):        
+        super().__init__(**data)
+        self.client = OpenAiLlmClient(
+            api_key=data.get("api_key", self.api_key),
+            api_version=data.get("api_version", self.api_version),
+            azure_endpoint=data.get("azure_endpoint", self.azure_endpoint),
+            azure_deployment=data.get("azure_deployment", self.azure_deployment),
+        )
 
 class CustomMessage(BaseModel):
     content: str

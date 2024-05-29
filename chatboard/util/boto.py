@@ -1,11 +1,13 @@
 from pathlib import PosixPath
 import boto3
 import io
-from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SCRAPING_BUCKET
+# from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SCRAPING_BUCKET
 from botocore.exceptions import ClientError
 from botocore.client import Config
+import os
 
-
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
 
 def get_s3_client():
