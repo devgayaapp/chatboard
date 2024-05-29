@@ -1,4 +1,6 @@
+from typing import List, Optional
 from chatboard.text.app_manager import app_manager
+from chatboard.text.llms.prompt_tracer import PromptTracer
 from chatboard.text.vectors.rag_documents2 import RagDocuments
 from pydantic import BaseModel
 
@@ -32,3 +34,18 @@ def add_chatboard(app):
     def edit_rag_document():
         return {}
     
+
+    @app.get("/chatboard/get_runs")
+    async def get_runs(limit: int = 10, offset: int = 0, runNames: Optional[List[str]] = None):
+        tracer = PromptTracer()
+        runs = await tracer.aget_runs(name=runNames, limit=limit)
+        return [r.run for r in runs]
+    
+
+    @app.get("/chatboard/get_run_tree")
+    async def get_run_tree(run_id: str):
+        tracer = PromptTracer()
+        run = await tracer.aget_run(run_id)
+        return run
+    
+

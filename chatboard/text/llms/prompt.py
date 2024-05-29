@@ -458,7 +458,7 @@ class Prompt(BaseModel):
             name=self.name,
             run_type="prompt",
             inputs={
-                "input": log_kwargs,                
+                "input": log_kwargs,
                 # "messages": conversation.messages
             },
             # extra=extra,

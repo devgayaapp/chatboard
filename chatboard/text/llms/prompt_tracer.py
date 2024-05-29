@@ -3,9 +3,15 @@ from typing import Any, Dict, Union, List
 from langsmith import Client
 from langsmith.schemas import Run, Feedback
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from components.etl.rag_manager import RagVector
-from config import LANGCHAIN_PROJECT, OPENAI_API_KEY, PINECONE_ENV, PINECONE_KEY
+# from components.etl.rag_manager import RagVector
+# from config import LANGCHAIN_PROJECT, OPENAI_API_KEY, PINECONE_ENV, PINECONE_KEY
+# from chatboard.text.llms.prompt_manager import RagVector
 import json
+import os
+
+
+LANGCHAIN_PROJECT = os.getenv("LANGCHAIN_PROJECT", "default")
+
 
 
 
@@ -290,7 +296,6 @@ class PromptTracer:
             limit=10,
             error: bool=False,
         ):
-        limit = 10
         runs = []        
         active_filter = None
         if name is not None:
@@ -313,6 +318,7 @@ class PromptTracer:
             filter=active_filter,
             execution_order=execution_order,
             error=error,
+            limit=limit
             # filter='or(eq(name, "AgentExecutor"), eq(name, "RouterChain"), eq(name, "AvoConversationalRetrievalChain"))',                    
         ):
             runs.append(PromptRun(run))
@@ -329,16 +335,25 @@ class PromptTracer:
             limit=10,
         ):
         return await asyncio.get_running_loop().run_in_executor(
-            None, self.get_runs, name, execution_order, filter, project_name, limit
+            None, self.get_run_list, name, execution_order, filter, project_name, limit
         )
 
-    def get_run(self, run_id: str):
+
+    async def aget_run(self, run_id: str):
+        return await asyncio.get_running_loop().run_in_executor(
+            None, self.get_run, run_id, True
+        )
+
+    def get_run(self, run_id: str, output_raw=False):
         # run = self.client.read_run(run_id)
         # child_runs = list(self.client.list_runs(
         #     project_name="default",
         #     run_ids=run.child_run_ids
         # ))
         lc_run = self.client.read_run(run_id, load_child_runs=True)
+        if output_raw:
+            return lc_run
+        
         # def tree_walk(parent_run):
         #     if parent_run.run.name == "RunnableSequence":
         #         for child in parent_run.run.child_runs:
@@ -529,14 +544,15 @@ class PromptTracer:
         run = self.get_run(run_id)
         # prompt_runs = [r for r in run.run.child_runs if r.run_type == "prompt"]
         step_run = run.run.child_runs[step_idx]
-        return RagVector[pydantic_model](
-            id= str(step_run.id),
-            metadata=pydantic_model(**{            
-                "state": step_run.inputs['state'],
-                "action": step_run.outputs['state']['_actions'][-1],
-                "message": step_run.outputs['state']['_conversation']['messages'][-1],
-            })
-        )
+        return {}
+        # return RagVector[pydantic_model](
+        #     id= str(step_run.id),
+        #     metadata=pydantic_model(**{            
+        #         "state": step_run.inputs['state'],
+        #         "action": step_run.outputs['state']['_actions'][-1],
+        #         "message": step_run.outputs['state']['_conversation']['messages'][-1],
+        #     })
+        # )
         # return RagVector[pydantic_model](
         #     id= str(step_run.id),
         #     metadata=pydantic_model(**{            
