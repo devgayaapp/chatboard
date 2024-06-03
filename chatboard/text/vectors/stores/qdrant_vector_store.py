@@ -22,7 +22,8 @@ class VectorSearchResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-
+class VectorStoreException(Exception):
+    pass
 
 
 def metrics_to_qdrant(metric: VectorMetrics):
@@ -44,8 +45,8 @@ class QdrantVectorStore(VectorStoreBase):
     def __init__(
         self,
         collection_name: str,
-        url: str=None,
-        api_key: str=None,
+        url: str | None=None,
+        api_key: str | None = None,
         ) -> None:
         url = url or os.environ.get("QDRANT_URL")
         api_key = api_key or os.environ.get("QDRANT_API_KEY", None)
@@ -121,7 +122,7 @@ class QdrantVectorStore(VectorStoreBase):
 
 
 
-    async def add_documents(self, vectors, metadata: List[Union[Dict, BaseModel]], ids=None, namespace=None, batch_size=100):
+    async def add_documents(self, vectors, metadata: List[Dict | BaseModel], ids=None, namespace=None, batch_size=100):
         namespace = namespace or self.collection_name
         metadata = [m.dict(exclude={'__orig_class__'}) if isinstance(m, BaseModel) else m for m in metadata]
         if not ids:
@@ -141,7 +142,7 @@ class QdrantVectorStore(VectorStoreBase):
             )
 
 
-    async def create_collection(self, vectorizers, collection_name: str =None):
+    async def create_collection(self, vectorizers, collection_name: str | None = None):
         collection_name=collection_name or self.collection_name
         vector_config = {}
         for vectorizer in vectorizers:
@@ -152,13 +153,67 @@ class QdrantVectorStore(VectorStoreBase):
         )
 
 
-    async def delete_collection(self, collection_name: str=None):
+    async def delete_collection(self, collection_name: str | None =None):
         collection_name = collection_name or self.collection_name
         await self.client.delete_collection(collection_name=collection_name)
 
 
 
-    async def get_many(self, ids: List[str]=None, top_k=10, with_payload=False, with_vectors=False):
+    # async def delete_documents_ids(self, ids: List[Union[str, int]]):
+    async def delete_documents_ids(self, ids: List[str | int]):
+        res = await self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=models.PointIdsList(
+                points=ids,
+            )
+        )
+        return res
+
+    async def delete_documents(self, filters):
+        if not filters:
+            raise ValueError("filters must be provided. to delete all documents, use delete_collection method.")
+        if filters is not None:
+            must_not, must = self.parse_filter(filters)
+            filter_ = models.Filter(
+                must_not=must_not,
+                must=must
+            )
+        
+        res = await self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=models.FilterSelector(
+                filter=filter_
+            )
+        )
+        return res
+
+
+    async def get_documents(self, filters: Any,  ids: List[str | int] | None=None, top_k: int=10, with_payload=False, with_vectors=False):
+        filter_ = None
+        if ids is not None:
+            # top_k: int | None = None
+            filter_ = models.Filter(
+                must=[
+                    models.HasIdCondition(has_id=ids)
+                ],
+            )
+        if filters is not None:
+            must_not, must = self.parse_filter(filters)
+            filter_ = models.Filter(
+                must_not=must_not,
+                must=must
+            )
+        recs, _ = await self.client.scroll(
+            collection_name=self.collection_name,
+            scroll_filter=filter_,
+            limit=top_k,
+            with_payload=with_payload,
+            with_vectors=with_vectors,
+        )
+        return self._pack_points(recs)
+
+
+    async def get_many(self, ids: List[str | int] | None=None, top_k=10, with_payload=False, with_vectors=False):
         filter_ = None
         if ids is not None:
             top_k = None
@@ -177,8 +232,10 @@ class QdrantVectorStore(VectorStoreBase):
         return self._pack_points(recs)
 
 
-    async def info(self):
-        return await self.client.get_collection("toxisity_rag")
+    async def info(self):        
+        return await self.client.get_collection(self.collection_name)
+        
+            
 
 
     def parse_filter(self, filters: Dict[str, Any]):
