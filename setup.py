@@ -14,13 +14,14 @@ setup(
     ],
     extras_require={
         'text': [
+            "numpy==1.26.4",
             "langchain==0.1.9",
             "langchain-openai==0.0.5",
             # "pydantic==1.10.4",
             "pydantic>=1.10.4, <3",
             "tiktoken==0.5.2",
             "pinecone-client==3.0.1",
-            "pinecone-text==0.7.0",
+            "pinecone-text==0.9.0",
             "scipy==1.11.4",
             "boto3==1.24.47",
             "openai==1.23.2",

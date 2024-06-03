@@ -13,9 +13,11 @@ from typing import Any, Coroutine, Dict, List, Optional, Tuple, TypeVar, Generic
 from langsmith.run_trees import RunTree
 
 
-from pydantic import BaseModel, ConfigDict, Field
+# from pydantic import BaseModel, ConfigDict, Field
 from pydantic.generics import GenericModel
 from langchain_core.utils.function_calling import convert_to_openai_tool
+# from langchain_core import pydantic_v1
+from langchain_core.pydantic_v1 import BaseModel, ConfigDict, Field
 import tiktoken
 import textwrap
 

@@ -1,5 +1,7 @@
 import re
 from typing import Optional, Union, get_type_hints, get_origin, get_args
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers.openai_tools import PydanticToolsParser
 
 import yaml
 
@@ -10,6 +12,24 @@ def sanitize_text(text: str):
 
 class PromptParsingException(Exception):
     pass
+
+
+
+
+
+class CompletionParser:
+
+    def __init__(self, pydantic_model=None) -> None:
+        llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
+        llm_with_tools = llm.bind_tools([pydantic_model])                
+        self.tool_chain = llm_with_tools | PydanticToolsParser(tools=[pydantic_model])
+
+    async def parse(self, competion):
+        output = await self.tool_chain.ainvoke(competion)
+        return output
+
+
+
 
 def parse_model_list(completion, pydantic_model, delimiter=","):
     rows = [r for r in completion.split("\n") if r != ""]

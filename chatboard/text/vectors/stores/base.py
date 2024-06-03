@@ -28,6 +28,20 @@ class VectorStoreBase:
         raise NotImplementedError
 
 
-    async def delete_collection(self):
+    async def delete_collection(self, namespace: str | None = None):
         """Deletes a collection in the vector store"""
+        raise NotImplementedError
+    
+
+    async def delete_documents_ids(self, ids: List[str | int]):
+        """Deletes documents from the vector store by id"""
+        raise NotImplementedError
+    
+    async def delete_documents(self, filters: Any):
+        """Deletes documents from the vector store by filters"""
+        raise NotImplementedError
+    
+
+    async def get_documents(self, filters: Any,  ids: List[str | int] | None=None, top_k: int=10, with_payload=False, with_vectors=False):
+        """Retrieves documents from the vector store"""
         raise NotImplementedError

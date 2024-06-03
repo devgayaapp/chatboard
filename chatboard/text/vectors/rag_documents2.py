@@ -49,9 +49,9 @@ class RagDocuments:
             self, 
             namespace: str, 
             vectorizers: List[VectorizerBase] = [], 
-            vector_store: VectorStoreBase = None, 
-            key_class: Union[Type[K], str] = str, 
-            metadata_class: Union[Type[V], str] = str
+            vector_store: VectorStoreBase | None = None, 
+            key_class: Type[K] | Type[str] = str, 
+            metadata_class: Type[V] | Type[str] = str
         ) -> None:
         self.namespace = namespace
         if vector_store is None:
@@ -66,7 +66,7 @@ class RagDocuments:
         self.metadata_class = metadata_class
         app_manager.register_rag_space(namespace, metadata_class)
 
-    async def _embed_documents(self, documents: List[K]):
+    async def _embed_documents(self, documents: List[Any]):
         embeds = await asyncio.gather(
             *[vectorizer.embed_documents(documents) for vectorizer in self.vectorizers]
         )
@@ -100,7 +100,7 @@ class RagDocuments:
     
 
 
-    async def add_documents(self, keys: List[K], metadata: List[V], ids: List[Union[int, str]]=None):
+    async def add_documents(self, keys: List[Any], metadata: List[Any], ids: List[str] | List[int] | None=None):
         if type(keys) != list:
             raise ValueError("keys must be a list")
         if type(metadata) != list:
@@ -125,6 +125,17 @@ class RagDocuments:
         return outputs
     
 
+    async def get_documents(self, filters: Any=None,  ids: List[int | str] | None = None, top_k=10, with_metadata: bool=True, with_vectors: bool=False):
+        res = await self.vector_store.get_documents(
+            filters=filters, 
+            ids=ids, 
+            top_k=top_k,
+            with_payload=with_metadata, 
+            with_vectors=with_vectors
+        )
+        return self._pack_results(res)
+    
+
     async def add_examples(self, examples: List[RagSearchResult]):
         keys = [example.metadata.key for example in examples]
         values = [example.metadata.value for example in examples]
@@ -133,7 +144,7 @@ class RagDocuments:
     
 
 
-    async def similarity(self, query: K, top_k=3, filters=None, alpha=None, with_vectors=False):
+    async def similarity(self, query: Any, top_k=3, filters=None, alpha=None, with_vectors=False):
         query_vector = await self._embed_documents([query])
         query_vector = query_vector[0]
         res = await self.vector_store.similarity(query_vector, top_k, filters, alpha, with_vectors=with_vectors)
@@ -149,12 +160,20 @@ class RagDocuments:
     async def get_many(self, top_k=10):
         res = await self.vector_store.get_many(top_k=top_k, with_payload=True)
         return self._pack_results(res)
+    
 
-
-    async def create_namespace(self, namespace: str=None):
+    async def create_namespace(self, namespace: str | None = None):
         namespace = namespace or self.namespace
         return await self.vector_store.create_collection(self.vectorizers, namespace)
     
-    async def delete_namespace(self, namespace: str=None):
+
+    async def delete_namespace(self, namespace: str | None = None):
         namespace = namespace or self.namespace
         return await self.vector_store.delete_collection(namespace)
+    
+
+    async def delete_documents(self, ids: List[int | str] | None = None, filters: Any=None):
+        if ids is not None:
+            return await self.vector_store.delete_documents_ids(ids)
+        elif filters is not None:
+            return await self.vector_store.delete_documents(filters)
