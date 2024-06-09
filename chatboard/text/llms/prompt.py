@@ -32,7 +32,7 @@ from chatboard.text.vectors.rag_documents import RagDocuments
 # from components.etl.rag_manager import RagVectorSpace
 # from components.etl.tracer import Tracer
 # from config import PROMPT_REPO_HOME
-from .completion_parsing import auto_split_completion, auto_split_list_completion, is_list_model, parse_completion, parse_model_list, unpack_list_model
+from .completion_parsing import CompletionParser, auto_split_completion, auto_split_list_completion, is_list_model, parse_completion, parse_model_list, unpack_list_model
 from .conversation import SystemConversation, AIMessage, Conversation, ConversationRag, HumanMessage, SystemMessage, from_langchain_message
 # from .openai_llm import OpenAiLLM
 from .llm import AzureOpenAiLLM, OpenAiLLM
@@ -209,6 +209,7 @@ class Prompt(BaseModel):
     # top_p: float=None
     # presence_penalty: float=None
     # frequency_penalty: float=None    
+    function_calling: bool = False
     is_traceable: bool=True,
     # seed: int = None                 
     class Config:
@@ -485,6 +486,10 @@ class Prompt(BaseModel):
     
 
     async def parser(self, completion):
+        if self.function_calling:
+            completion_parser = CompletionParser(self.output_class)
+            return await completion_parser.parse(completion)
+        
         if self.output_class:
             # try:
             if is_list_model(self.output_class):
@@ -785,7 +790,7 @@ class Prompt(BaseModel):
                         curr_content=curr_content, 
                         chunk=chunk.content, 
                         output_list=output_list, 
-                        curr_field=curr_field,                         
+                        curr_field=curr_field,
                         pydantic_model=pydantic_model
                     )
                     if is_new_output:

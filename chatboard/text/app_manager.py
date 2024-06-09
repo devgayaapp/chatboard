@@ -1,4 +1,5 @@
 from typing import Type
+from chatboard.text.llms.prompt import Prompt
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
 
@@ -15,12 +16,13 @@ class AppManager:
         self.prompts = {}
 
 
-    def register_rag_space(self, namespace: str, metadata_class: Type[BaseModel] | Type[str]):
+    def register_rag_space(self, namespace: str, metadata_class: Type[BaseModel] | Type[str], prompt: Prompt | None = None):
         if namespace in self.rag_spaces:
             return
         self.rag_spaces[namespace] = {
             "metadata_class": metadata_class,
             "namespace": namespace,
+            "prompt": prompt
         }
     
     def register_prompt(self, prompt):

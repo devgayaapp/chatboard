@@ -1,10 +1,12 @@
 from typing import Any, Dict, List, TypeVar, Union, Optional, Generic, Type
 from uuid import uuid4
+from chatboard.text.llms.completion_parsing import is_list_model
 from pydantic import BaseModel
-from chatboard.text.app_manager import app_manager
+# from chatboard.text.app_manager import app_manager
 from chatboard.text.vectors.stores.base import VectorStoreBase
 from chatboard.text.vectors.stores.qdrant_vector_store import QdrantVectorStore
 from chatboard.text.vectors.vectorizers.base import VectorMetrics, VectorizerBase
+from qdrant_client.http.exceptions import UnexpectedResponse
 import asyncio
 
 from chatboard.text.vectors.vectorizers.text_vectorizer import TextVectorizer
@@ -64,7 +66,7 @@ class RagDocuments:
             self.vectorizers = vectorizers
         self.key_class = key_class
         self.metadata_class = metadata_class
-        app_manager.register_rag_space(namespace, metadata_class)
+        # app_manager.register_rag_space(namespace, metadata_class)
 
     async def _embed_documents(self, documents: List[Any]):
         embeds = await asyncio.gather(
@@ -111,8 +113,12 @@ class RagDocuments:
         for i, key in enumerate(keys):
             if type(key) != self.key_class:
                 raise ValueError(f"key at index {i} is not of type {self.key_class}")
-        for i, value in enumerate(metadata):                
-            if type(value) != self.metadata_class:
+        for i, value in enumerate(metadata):
+            # handling list models
+            if is_list_model(self.metadata_class):
+                if type(value) != list:
+                    raise ValueError(f"value at index {i} is not a list")
+            elif type(value) != self.metadata_class:
                 raise ValueError(f"value at index {i} is not of type {self.metadata_class}")
         
         vectors = await self._embed_documents(keys)
@@ -165,6 +171,12 @@ class RagDocuments:
     async def create_namespace(self, namespace: str | None = None):
         namespace = namespace or self.namespace
         return await self.vector_store.create_collection(self.vectorizers, namespace)
+    
+    async def verify_namespace(self):
+        try:
+            await self.vector_store.info()
+        except UnexpectedResponse as e:
+            await self.create_namespace()
     
 
     async def delete_namespace(self, namespace: str | None = None):
