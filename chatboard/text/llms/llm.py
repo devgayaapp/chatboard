@@ -35,6 +35,7 @@ default_prompt_config = {
 
 
 chat_models = [
+    "gpt-4o",
     "gpt-3.5-turbo-0125",
     'gpt-3.5-turbo',
     'gpt-4-1106-preview',
@@ -161,14 +162,16 @@ class OpenAiLlmClient:
     def preprocess(self, msgs):
         return [msg.to_openai() for msg in msgs]
 
-    async def complete(self, msgs, **kwargs):
+    async def complete(self, msgs, tools=None, **kwargs):
         msgs = self.preprocess(msgs)
         openai_completion = await self.client.chat.completions.create(
             messages=msgs,
+            tools=tools,
             **kwargs
         )
-        output = openai_completion.choices[0].message
-        return AIMessage(content=output.content)
+        return openai_completion
+        # output = openai_completion.choices[0].message
+        # return AIMessage(content=output.content or '', tool_calls=output.tool_calls)
         # return output
 
 
@@ -287,7 +290,7 @@ class LLM(BaseModel):
         return model_kwargs
 
 
-    async def complete(self, msgs, tracer_run=None, metadata={}, completion=None, **kwargs):
+    async def complete(self, msgs, tools=None, tracer_run=None, metadata={}, completion=None, **kwargs):
 
         llm_kwargs = self.get_llm(**kwargs)
 
@@ -312,9 +315,11 @@ class LLM(BaseModel):
             #     messages=openai_messages,
             #     **llm_kwargs
             # )
-            completion = await self.client.complete(msgs, **llm_kwargs)
+            completion = await self.client.complete(msgs, tools=tools, **llm_kwargs)
             llm_run.end(outputs=completion)
-            return completion
+            # return completion
+            output = completion.choices[0].message
+            return AIMessage(content=output.content or '', tool_calls=output.tool_calls)
         
 
     async def send_stream(self, openai_messages, tracer_run, metadata={}, completion=None, **kwargs):

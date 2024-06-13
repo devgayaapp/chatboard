@@ -127,7 +127,7 @@ class RagDocuments:
             
         # documents = [RagDocMetadata[self.key_class, self.value_class](id=i, key=key if include_key else None, value=value) for i, key, value in zip(ids, keys, values)]
         # documents = [self.metadata_class(id=i, **value.dict()) for i, value in zip(ids, metadata)]
-        outputs = await self.vector_store.add_documents(vectors, metadata, namespace=self.namespace)
+        outputs = await self.vector_store.add_documents(vectors, metadata, ids=ids, namespace=self.namespace)
         return outputs
     
 

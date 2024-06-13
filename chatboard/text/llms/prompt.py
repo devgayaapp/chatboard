@@ -21,6 +21,7 @@ from langchain_core.pydantic_v1 import BaseModel, ConfigDict, Field
 import tiktoken
 import textwrap
 
+from chatboard.text.llms.views import ViewModel
 from chatboard.text.vectors.rag_documents import RagDocuments
 
 # from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage, AIMessage
@@ -179,7 +180,7 @@ def filter_kwargs(kwargs, func_):
 
 class Prompt(BaseModel):
     # promptpath: str=None
-    system_prompt: str=None    
+    system_prompt: str=None
     model: str= "gpt-3.5-turbo-0125"
     # _func=None
     name: Optional[str] = None
@@ -187,6 +188,7 @@ class Prompt(BaseModel):
     output_class: Optional[BaseModel] = None
     rag_space: Optional[RagDocuments] = None
     rag_namespace: Optional[str] = None
+    tools: Optional[List[ViewModel]] = None
     # filename: str=None
     # rag_length: int=None    
     # rag: RagDocuments= Field(default_factory=RagDocuments)
@@ -448,7 +450,7 @@ class Prompt(BaseModel):
         return msgs
     
 
-    async def __call__(self, prompt=None, tracer_run=None, output_conversation=False, **kwargs: Any) -> Any:
+    async def __call__(self, prompt=None, history=[], tracer_run=None, output_conversation=False, **kwargs: Any) -> Any:
         if prompt is not None:
             kwargs['prompt'] = prompt
         log_kwargs = {}
@@ -470,9 +472,11 @@ class Prompt(BaseModel):
         ) as prompt_run:
             msgs = await self.conversation(**kwargs)
             msgs = [m for m in msgs if m is not None]
+            tools = [m.to_tool() for m in self.tools] if self.tools else None
             # openai_msgs = [m.to_openai() for m in msgs]
             completion_msg = await self.llm.complete(
-                    msgs=msgs, 
+                    msgs=msgs,
+                    tools=tools,
                     tracer_run=prompt_run, 
                     # metadata=system_conversation.get_metadata(),            
                     **kwargs

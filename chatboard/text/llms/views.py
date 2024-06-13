@@ -1,9 +1,15 @@
-from typing import List, Type
+from typing import Any, List, Type
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.utils.function_calling import convert_to_openai_tool
+import textwrap
+from chatboard.text.llms.conversation import HumanMessage, SystemMessage
+import inspect
+from abc import ABC, abstractmethod
 
 
 
+def is_async_function(obj):
+    return inspect.iscoroutinefunction(obj) or inspect.isasyncgenfunction(obj)
 
 
 
@@ -44,8 +50,16 @@ def model_to_prompt(tool_dict, add_type=True, add_constraints=True):
 
 
 class ViewModel(BaseModel):
+    system: bool = False
 
     def render(self):
+        if self.system:
+            return self.render_system()
+        return self.dict()
+    
+    async def render(self):
+        if self.system:
+            return self.render_system()
         return self.dict()
     
     @classmethod    
@@ -58,14 +72,31 @@ class ViewModel(BaseModel):
     @classmethod 
     def to_tool(self):
         return convert_to_openai_tool(self)
+    
+
+    async def __call__(self, **kwargs: Any) -> Any:
+        if is_async_function(self.render):
+            content_out = await self.render(**kwargs)
+        else:
+            content_out = self.render(**kwargs)
+        content = textwrap.dedent(content_out).strip()
+        if self.system:                
+            return SystemMessage(content=content)
+        else:
+            return HumanMessage(content=content)
+            
 
 
 class Action(BaseModel):
 
-    async def reduce(self, state: ViewModel):
+    @abstractmethod    
+    async def handle(self, state: ViewModel):
         return None
 
-    @classmethod    
+    @classmethod
     def render(self):
         return model_to_prompt(convert_to_openai_tool(Action))
-
+    
+    @classmethod 
+    def to_tool(self):
+        return convert_to_openai_tool(self)
