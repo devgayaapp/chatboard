@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Union
 from langchain_core.pydantic_v1 import BaseModel, ConfigDict, Field
 
 from chatboard.text.llms.conversation import SystemMessage, HumanMessage
+from chatboard.text.llms.function_utils import call_function, filter_func_args, flatten_list, is_async_function
 from chatboard.text.llms.views import Action, ViewModel, Type
 from .llm import AzureOpenAiLLM, OpenAiLLM
 from .tracer import Tracer
@@ -12,27 +13,37 @@ import inspect
 import asyncio
 import itertools
 
-def is_async_function(obj):
-    return inspect.iscoroutinefunction(obj) or inspect.isasyncgenfunction(obj)
+
+# def is_async_function(obj):
+#     return inspect.iscoroutinefunction(obj) or inspect.isasyncgenfunction(obj)
+
+# def get_func_args(func):
+#     return list(inspect.signature(func).parameters.keys())
+
+# def flatten_list(nested_list):
+#     flat_list = []
+#     for item in nested_list:
+#         if isinstance(item, list):
+#             flat_list.extend(flatten_list(item))
+#         else:
+#             flat_list.append(item)
+#     return flat_list
+
+# def filter_func_args(func, args):
+#     return {k: v for k, v in args.items() if k in get_func_args(func)}
 
 
-def get_func_args(func):
-    return list(inspect.signature(func).parameters.keys())
-
-def flatten_list(nested_list):
-    flat_list = []
-    for item in nested_list:
-        if isinstance(item, list):
-            flat_list.extend(flatten_list(item))
-        else:
-            flat_list.append(item)
-    return flat_list
+# async def call_function(func, *args, **kwargs):
+#     kwargs = filter_func_args(func, kwargs)
+#     if inspect.iscoroutinefunction(func):
+#         return await func(*args, **kwargs)
+#     return func(*args, **kwargs)
 
 
 
 
-def filter_func_args(func, args):
-    return {k: v for k, v in args.items() if k in get_func_args(func)}
+
+
 
 class ChatPrompt(BaseModel):
     name: Optional[str] = None
@@ -73,7 +84,10 @@ class ChatPrompt(BaseModel):
         conversation = []
         kwargs['context'] = context
         filtered_args = filter_func_args(self.complete, kwargs)
-        completion_views = await self.complete(**filtered_args)
+        if is_async_function(self.complete):
+            completion_views = await self.complete(**filtered_args)
+        else:
+            completion_views = self.complete(**filtered_args)
         # if 'context' in get_func_args(self.complete):
         #     completion_views = await self.complete(context=context, **kwargs)
         # else:
@@ -97,8 +111,18 @@ class ChatPrompt(BaseModel):
 
     def convert_to_openai_tool(self):
         return [tool_cls["info"].annotation.to_tool() for tool_cls in self.tools.values()]
+    
 
-    async def __call__(self, prompt=None, context=None, tracer_run=None, output_conversation=False, **kwargs: Any) -> Any:
+    async def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return await self.call(*args, **kwds)
+    
+    def bind(self, *partial_args, **partial_kwargs):
+        async def call( **kwargs: Any): 
+            kwargs.update(partial_kwargs)
+            return await self.call(*partial_args, **kwargs)
+        return call
+
+    async def call(self, prompt=None, context=None, tracer_run=None, output_conversation=False, **kwargs: Any) -> Any:
             if prompt is not None:
                 kwargs['prompt'] = prompt
             if 'model' not in kwargs:
@@ -118,7 +142,7 @@ class ChatPrompt(BaseModel):
                     # "messages": conversation.messages
                 },
                 # extra=extra,
-            ) as prompt_run:                
+            ) as prompt_run:                     
                 msgs = await self._build_conversation(context=context, **kwargs)
                 msgs = [m for m in msgs if m is not None]
 
@@ -153,22 +177,37 @@ class ChatPrompt(BaseModel):
                     #     completion_msg = output
 
                 return completion_msg
-    
+            
+
     async def _handle_tool_call(self, context, completion_msg):
         for tool_call in completion_msg.tool_calls:
             tool_args = json.loads(tool_call.function.arguments)
             tool_cls = self.tools[tool_call.function.name]['info'].default.__class__
-            # tool = tool_cls(**tool_args)
-            # _attr = getattr(self, self.tools[tool_call.function.name]["name"])
-            # output = await _attr.handle(tool)
             output = await self.handle(context, tool_cls, tool_args)
             return output
         
+
     async def handle(self, context, tool_cls, tool_args):
         tool = tool_cls(**tool_args)
         tool_args['context'] = context
-        kwargs = filter_func_args(self.complete, tool_args)
-        return await tool.handle(**kwargs)
-        # _attr = getattr(self, self.tools[tool_call.function.name]["name"])
-        # output = await _attr.handle(tool)
-        # return output
+        return await call_function(tool.handle, **tool_args)
+
+    
+    # async def _handle_tool_call(self, context, completion_msg):
+    #     for tool_call in completion_msg.tool_calls:
+    #         tool_args = json.loads(tool_call.function.arguments)
+    #         tool_cls = self.tools[tool_call.function.name]['info'].default.__class__
+    #         # tool = tool_cls(**tool_args)
+    #         # _attr = getattr(self, self.tools[tool_call.function.name]["name"])
+    #         # output = await _attr.handle(tool)
+    #         output = await self.handle(context, tool_cls, tool_args)
+    #         return output
+        
+    # async def handle(self, context, tool_cls, tool_args):
+    #     tool = tool_cls(**tool_args)
+    #     tool_args['context'] = context
+    #     kwargs = filter_func_args(tool.handle, tool_args)
+    #     return await tool.handle(**kwargs)
+    #     # _attr = getattr(self, self.tools[tool_call.function.name]["name"])
+    #     # output = await _attr.handle(tool)
+    #     # return output

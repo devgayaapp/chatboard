@@ -2,7 +2,7 @@
 
 
 from datetime import datetime
-from typing import List, Union
+from typing import Any, List, Union
 
 from chatboard.text.llms.views import BaseModel, Field
 
@@ -65,8 +65,11 @@ class Context(BaseModel):
     key: str | int
 
     curr_prompt: ChatPrompt = None
+    curr_prompt_gen: Any = None
+
     message: str = None
     history: History = Field(default_factory=History)
+
 
     async def init_state(self):
         raise NotImplementedError

@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, List, Type
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.utils.function_calling import convert_to_openai_tool
@@ -6,13 +7,25 @@ from chatboard.text.llms.conversation import HumanMessage, SystemMessage
 import inspect
 from abc import ABC, abstractmethod
 
-
-
-def is_async_function(obj):
-    return inspect.iscoroutinefunction(obj) or inspect.isasyncgenfunction(obj)
+from chatboard.text.llms.function_utils import call_function, is_async_function
 
 
 
+
+
+
+
+# def is_async_function(obj):
+#     return inspect.iscoroutinefunction(obj) or inspect.isasyncgenfunction(obj)
+def describe_enum(enum_cls: Enum):
+    return ", ".join([v.value for v in enum_cls])
+
+class ToolEnum(str, Enum):
+
+    @classmethod
+    def render(self):
+        return describe_enum(self)
+    
 
 def parse_properites(properties, add_type=True, add_constraints=True, tabs="\t"):
     prompt = ""
@@ -74,11 +87,12 @@ class ViewModel(BaseModel):
         return convert_to_openai_tool(self)
     
 
-    async def __call__(self, **kwargs: Any) -> Any:
-        if is_async_function(self.render):
-            content_out = await self.render(**kwargs)
-        else:
-            content_out = self.render(**kwargs)
+    async def __call__(self,*args, **kwargs: Any) -> Any:
+        # if is_async_function(self.render):
+        #     content_out = await self.render(**kwargs)
+        # else:
+        #     content_out = self.render(**kwargs)
+        content_out = await call_function(self.render, *args, **kwargs)
         content = textwrap.dedent(content_out).strip()
         if self.system:                
             return SystemMessage(content=content)
@@ -89,9 +103,9 @@ class ViewModel(BaseModel):
 
 class Action(BaseModel):
 
-    @abstractmethod    
-    async def handle(self, state: ViewModel):
-        return None
+    # @abstractmethod    
+    async def handle(self, *args, **kwargs):
+        return self
 
     @classmethod
     def render(self):
