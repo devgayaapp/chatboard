@@ -37,6 +37,7 @@ class HumanMessage(BaseMessage):
 
 class AIMessage(BaseMessage):
     # role: str = Field("assistant", const=True)
+    did_finish: Optional[bool] = True
     role: Literal["assistant"] = "assistant"
     tool_calls: Optional[List[BaseModel]] = None
     output: Optional[BaseModel] = None

@@ -168,6 +168,8 @@ class ChatPrompt(BaseModel):
                         )
                 if completion_msg.tool_calls is not None:
                     completion_msg = await self._handle_tool_call(context, completion_msg)
+                else:                
+                    completion_msg = await self.on_complete(context, completion_msg)
                     # for tool_call in completion_msg.tool_calls:
                     #     tool_args = json.loads(tool_call.function.arguments)                        
                     #     toll_cls = self.tools['UserDetails']['info'].default.__class__
@@ -191,6 +193,11 @@ class ChatPrompt(BaseModel):
         tool = tool_cls(**tool_args)
         tool_args['context'] = context
         return await call_function(tool.handle, **tool_args)
+    
+
+    async def on_complete(self, context, completion_msg):
+        return completion_msg
+    
 
     
     # async def _handle_tool_call(self, context, completion_msg):
