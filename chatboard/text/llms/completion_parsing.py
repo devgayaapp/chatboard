@@ -160,15 +160,15 @@ def auto_split_row_completion(curr_content, chunk, output, curr_field, pydantic_
                 # another field had been found, so we assign the content to the previous field                
                 output[curr_field] = sanitize_content(prev_content)
             curr_field = field_name
-            if field_info.type_ == int:                    
+            if field_info.annotation == int:                    
                 output[field_name] = int(sanitize_content(curr_content))
                 curr_field = None
                 curr_content = ""
-            elif field_info.type_ == float:
+            elif field_info.annotation == float:
                 output[field_name] = float(sanitize_content(curr_content))
                 curr_field = None
                 curr_content = ""
-            elif field_info.type_ == bool:
+            elif field_info.annotation == bool:
                 output[field_name] = bool(sanitize_content(curr_content))
                 curr_field = None
                 curr_content = ""
