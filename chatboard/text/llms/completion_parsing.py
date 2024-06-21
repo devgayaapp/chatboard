@@ -31,7 +31,7 @@ def parse_model_list(completion, pydantic_model, delimiter=","):
                 row_split[i] = float(row_split[i])
             elif field_info.annotation == int:
                 row_split[i] = int(row_split[i])        
-        segments.append(pydantic_model(**{k: v for k, v in zip(pydantic_model.__fields__.keys(), row_split)}))
+        segments.append(pydantic_model(**{k: v for k, v in zip(pydantic_model.model_fields.keys(), row_split)}))
     return segments
 
 
@@ -101,7 +101,7 @@ def num_split_field(field, text, maxsplit=1):
 
 def to_dict(pydantic_model):
     d = {}
-    for field_name, field_info in pydantic_model.__fields__.items():
+    for field_name, field_info in pydantic_model.model_fields.items():
         d[field_name] = None
     return d   
 
@@ -153,7 +153,7 @@ def parse_completion(completion, pydantic_model):
 
 def auto_split_row_completion(curr_content, chunk, output, curr_field, pydantic_model):
     curr_content += chunk
-    for field_name, field_info in pydantic_model.__fields__.items():
+    for field_name, field_info in pydantic_model.model_fields.items():
         if search_field(field_name, curr_content):
             prev_content, curr_content = split_field(field_name, curr_content)
             if curr_field:
@@ -179,7 +179,7 @@ def auto_split_row_completion(curr_content, chunk, output, curr_field, pydantic_
 
 def auto_split_completion(curr_content, chunk, output, curr_field, pydantic_model):
     curr_content += chunk
-    for field_name, field_info in pydantic_model.__fields__.items():
+    for field_name, field_info in pydantic_model.model_fields.items():
         if search_field(field_name, curr_content):
             prev_content, curr_content = split_field(field_name, curr_content)
             if prev_content and curr_field:
@@ -198,7 +198,7 @@ def auto_split_list_completion(pydantic_model, curr_content, chunk, output_list=
     else:
         output = output_list[-1]
     curr_content += chunk
-    for field_name, field_info in pydantic_model.__fields__.items():
+    for field_name, field_info in pydantic_model.model_fields.items():
         if search_field(field_name, curr_content):
             prev_content, curr_content = split_field(field_name, curr_content)
             if prev_content and curr_field:
@@ -221,7 +221,7 @@ def unpack_list_model(pydantic_model):
 
 def auto_split_completion2(content, output, curr_field, pydantic_model):
     # output = output.copy()
-    for field_name, field_info in pydantic_model.__fields__.items():
+    for field_name, field_info in pydantic_model.model_fields.items():
         try:
             if re.search(f"^\n*{field_name.lower()}:", content, flags=re.IGNORECASE):
                 # ? new field started
